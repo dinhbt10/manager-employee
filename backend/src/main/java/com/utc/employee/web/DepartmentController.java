@@ -22,8 +22,11 @@ public class DepartmentController {
     }
 
     @GetMapping
-    public List<DepartmentDto> list() {
-        return departmentService.list(currentUser.get());
+    public List<DepartmentDto> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return departmentService.list(currentUser.get(), q, active);
     }
 
     @PostMapping

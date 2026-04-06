@@ -16,6 +16,10 @@ public class Feature {
     @Column(nullable = false, length = 255)
     private String name;
 
+    /** Ngưng: không gán mới / không hiện trong dropdown; quyền cũ không còn hiệu lực khi kiểm tra. */
+    @Column(nullable = false)
+    private boolean active = true;
+
     public Long getId() {
         return id;
     }
@@ -34,5 +38,13 @@ public class Feature {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

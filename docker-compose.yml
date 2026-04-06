@@ -23,6 +23,8 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      # Production: domain frontend thật, ví dụ: https://app.example.com
+      # CORS_ALLOWED_ORIGINS: "https://app.example.com"
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: empdb

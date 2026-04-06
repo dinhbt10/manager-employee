@@ -18,9 +18,26 @@
     @apply antialiased;
   }
   body {
-    @apply bg-zinc-950 text-zinc-100 min-h-screen font-sans;
+    @apply min-h-screen bg-zinc-100 font-sans text-zinc-800;
     background-image:
-      radial-gradient(ellipse 120% 80% at 50% -20%, oklch(0.28 0.08 260 / 0.5), transparent),
-      radial-gradient(ellipse 80% 50% at 100% 0%, oklch(0.25 0.06 200 / 0.35), transparent);
+      radial-gradient(ellipse 120% 80% at 50% -15%, oklch(0.94 0.04 250 / 0.9), transparent 55%),
+      radial-gradient(ellipse 90% 55% at 100% 0%, oklch(0.93 0.03 200 / 0.7), transparent 48%),
+      radial-gradient(ellipse 65% 45% at 0% 100%, oklch(0.94 0.035 280 / 0.55), transparent 45%),
+      linear-gradient(180deg, oklch(0.985 0.005 260), oklch(0.96 0.01 260));
   }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.45s ease-out both;
 }

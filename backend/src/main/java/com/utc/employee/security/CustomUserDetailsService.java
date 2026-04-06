@@ -34,7 +34,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()));
         for (Feature f : u.getFeatures()) {
-            authorities.add(new SimpleGrantedAuthority("FEAT_" + f.getCode()));
+            if (f.isActive()) {
+                authorities.add(new SimpleGrantedAuthority("FEAT_" + f.getCode()));
+            }
         }
         return new User(u.getUsername(), u.getPasswordHash(), authorities);
     }
@@ -45,7 +47,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(username));
         u.getFeatures().size();
         Long deptId = u.getDepartment() != null ? u.getDepartment().getId() : null;
-        Set<String> codes = u.getFeatures().stream().map(Feature::getCode).collect(Collectors.toSet());
+        Set<String> codes = u.getFeatures().stream()
+                .filter(Feature::isActive)
+                .map(Feature::getCode)
+                .collect(Collectors.toSet());
         return new AuthUser(u.getId(), u.getUsername(), u.getRole(), deptId, codes);
     }
 }

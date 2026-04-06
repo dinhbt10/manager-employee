@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class DepartmentService {
@@ -26,11 +27,26 @@ public class DepartmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<DepartmentDto> list(AuthUser current) {
+    public List<DepartmentDto> list(AuthUser current, String q, Boolean active) {
         if (!accessPolicy.canManageDepartment(current)) {
             throw new ForbiddenException("Chỉ Admin mới xem được phòng ban");
         }
-        return departmentRepository.findAll().stream().map(this::toDto).toList();
+        return departmentRepository.findAll().stream()
+                .map(this::toDto)
+                .filter(d -> matches(d, q, active))
+                .toList();
+    }
+
+    private boolean matches(DepartmentDto d, String q, Boolean active) {
+        if (active != null && d.active() != active) {
+            return false;
+        }
+        if (q == null || q.isBlank()) {
+            return true;
+        }
+        String needle = q.trim().toLowerCase(Locale.ROOT);
+        return d.code().toLowerCase(Locale.ROOT).contains(needle)
+                || d.name().toLowerCase(Locale.ROOT).contains(needle);
     }
 
     @Transactional

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,7 +45,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserDto> list(AuthUser current) {
+    public List<UserDto> list(AuthUser current, String q, String role, Long departmentId) {
+        List<UserDto> base = listBase(current);
+        return base.stream()
+                .filter(d -> matchesUserFilter(d, q, role, departmentId))
+                .toList();
+    }
+
+    private List<UserDto> listBase(AuthUser current) {
         if (current.role() == Role.EMPLOYEE) {
             UserAccount self = userAccountRepository.findById(current.id()).orElseThrow();
             return List.of(toDto(self, current));
@@ -58,6 +66,33 @@ public class UserService {
                     .toList();
         }
         return userAccountRepository.findAll().stream().map(u -> toDto(u, current)).toList();
+    }
+
+    private boolean matchesUserFilter(UserDto d, String q, String role, Long departmentId) {
+        if (role != null && !role.isBlank() && !role.trim().equalsIgnoreCase(d.role())) {
+            return false;
+        }
+        if (departmentId != null && !departmentId.equals(d.departmentId())) {
+            return false;
+        }
+        if (q == null || q.isBlank()) {
+            return true;
+        }
+        String needle = q.trim().toLowerCase(Locale.ROOT);
+        if (containsIgnore(d.fullName(), needle)) {
+            return true;
+        }
+        if (containsIgnore(d.employeeCode(), needle)) {
+            return true;
+        }
+        if (containsIgnore(d.username(), needle)) {
+            return true;
+        }
+        return d.departmentName() != null && containsIgnore(d.departmentName(), needle);
+    }
+
+    private static boolean containsIgnore(String hay, String needleLower) {
+        return hay != null && hay.toLowerCase(Locale.ROOT).contains(needleLower);
     }
 
     @Transactional(readOnly = true)
@@ -122,9 +157,9 @@ public class UserService {
     }
 
     private Set<Feature> resolveFeatures(Set<String> codes) {
-        List<Feature> list = featureRepository.findByCodeIn(codes);
+        List<Feature> list = featureRepository.findByCodeInAndActiveTrue(codes);
         if (list.size() != codes.size()) {
-            throw new BadRequestException("Một số mã chức năng không hợp lệ");
+            throw new BadRequestException("Một số mã chức năng không hợp lệ hoặc đã ngưng");
         }
         return new HashSet<>(list);
     }

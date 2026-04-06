@@ -21,6 +21,7 @@ type AuthContextValue = AuthState & {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isManager: boolean;
   canSeeDepartments: boolean;
 };
 
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isAdmin = user?.role === "ADMIN";
+  const isManager = user?.role === "MANAGER";
   const canSeeDepartments = isAdmin;
 
   const value = useMemo<AuthContextValue>(
@@ -71,9 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       isAdmin,
+      isManager,
       canSeeDepartments,
     }),
-    [token, user, login, logout, isAdmin, canSeeDepartments]
+    [token, user, login, logout, isAdmin, isManager, canSeeDepartments]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

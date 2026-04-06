@@ -43,9 +43,13 @@ public class AuthService {
         u.getFeatures().size();
         String token = jwtService.createToken(req.username());
         String deptName = u.getDepartment() != null ? u.getDepartment().getName() : null;
-        var features = u.getFeatures().stream().map(Feature::getCode).collect(Collectors.toSet());
+        var features = u.getFeatures().stream()
+                .filter(Feature::isActive)
+                .map(Feature::getCode)
+                .collect(Collectors.toSet());
         return new LoginResponse(
                 token,
+                u.getId(),
                 u.getUsername(),
                 u.getFullName(),
                 u.getRole().name(),

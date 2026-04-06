@@ -22,8 +22,12 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserDto> list() {
-        return userService.list(currentUser.get());
+    public List<UserDto> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Long departmentId
+    ) {
+        return userService.list(currentUser.get(), q, role, departmentId);
     }
 
     @GetMapping("/{id}")

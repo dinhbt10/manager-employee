@@ -13,6 +13,7 @@ public record PermissionRequestDto(
         String requesterName,
         Long targetUserId,
         String targetUserName,
+        Long targetDepartmentId,
         String targetDepartmentName,
         Set<String> requestedFeatureCodes,
         Long reviewerId,

@@ -2,13 +2,23 @@ package com.utc.employee.security;
 
 import com.utc.employee.domain.Role;
 import com.utc.employee.domain.UserAccount;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AccessPolicy {
 
     public boolean isAdmin(AuthUser u) {
-        return u != null && u.role() == Role.ADMIN;
+        if (u != null && u.role() == Role.ADMIN) {
+            return true;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return false;
+        }
+        return auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     public boolean isManager(AuthUser u) {
@@ -16,6 +26,11 @@ public class AccessPolicy {
     }
 
     public boolean canManageDepartment(AuthUser u) {
+        return isAdmin(u);
+    }
+
+    /** Danh mục mã chức năng (cấu hình hệ thống) — chỉ Admin. */
+    public boolean canManageFeatures(AuthUser u) {
         return isAdmin(u);
     }
 

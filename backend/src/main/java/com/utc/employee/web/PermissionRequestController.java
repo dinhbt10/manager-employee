@@ -25,8 +25,27 @@ public class PermissionRequestController {
     }
 
     @GetMapping
-    public List<PermissionRequestDto> list() {
-        return permissionRequestService.listVisible(currentUser.get());
+    public List<PermissionRequestDto> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) List<String> status,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long requesterId,
+            @RequestParam(required = false) Long targetUserId,
+            @RequestParam(required = false) String createdFrom,
+            @RequestParam(required = false) String createdTo,
+            @RequestParam(required = false) String featureCode
+    ) {
+        return permissionRequestService.listVisible(
+                currentUser.get(),
+                q,
+                status,
+                departmentId,
+                requesterId,
+                targetUserId,
+                createdFrom,
+                createdTo,
+                featureCode
+        );
     }
 
     @GetMapping("/{id}")
@@ -37,6 +56,11 @@ public class PermissionRequestController {
     @PostMapping
     public PermissionRequestDto create(@Valid @RequestBody CreatePermissionRequestBody body) {
         return permissionRequestService.create(currentUser.get(), body);
+    }
+
+    @PatchMapping("/{id}")
+    public PermissionRequestDto update(@PathVariable Long id, @Valid @RequestBody CreatePermissionRequestBody body) {
+        return permissionRequestService.update(currentUser.get(), id, body);
     }
 
     @PostMapping("/{id}/submit")
