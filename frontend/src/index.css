@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: oklch(0.97 0.02 240);
+  --color-brand-100: oklch(0.93 0.04 240);
+  --color-brand-200: oklch(0.85 0.08 240);
+  --color-brand-400: oklch(0.62 0.16 250);
+  --color-brand-500: oklch(0.52 0.18 255);
+  --color-brand-600: oklch(0.45 0.17 255);
+  --color-brand-700: oklch(0.38 0.14 255);
+  --color-brand-900: oklch(0.22 0.06 260);
+  --color-accent: oklch(0.72 0.15 195);
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-zinc-950 text-zinc-100 min-h-screen font-sans;
+    background-image:
+      radial-gradient(ellipse 120% 80% at 50% -20%, oklch(0.28 0.08 260 / 0.5), transparent),
+      radial-gradient(ellipse 80% 50% at 100% 0%, oklch(0.25 0.06 200 / 0.35), transparent);
+  }
+}
