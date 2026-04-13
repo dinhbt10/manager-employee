@@ -6,7 +6,7 @@ Gồm **frontend** (React + TypeScript + Vite + Tailwind CSS + Radix UI) và **b
 
 | Công cụ | Phiên bản / ghi chú |
 |---------|-------------------|
-| **Docker Desktop** (hoặc Docker Engine + Compose) | Để chạy PostgreSQL + API qua `docker compose` |
+| **Docker Desktop** (hoặc Docker Engine + Compose) | **macOS / Windows:** cài [Docker Desktop](https://www.docker.com/products/docker-desktop/), mở app và đợi Docker sẵn sàng trước khi gõ lệnh. **Windows:** backend WSL2 được khuyến nghị (Docker Desktop → Settings → General → *Use the WSL 2 based engine*). Dùng `docker compose` (Compose V2, kèm Docker Desktop) hoặc `docker-compose` nếu cài plugin riêng. |
 | **Node.js** | Khuyến nghị 20 LTS trở lên (để chạy Vite frontend) |
 | **JDK 17** + **Maven 3.9+** | Chỉ cần khi chạy backend **không** dùng Docker |
 
@@ -20,9 +20,13 @@ Cần **hai terminal** từ thư mục gốc `manager-employee/`:
 
 ### 1. Backend + cơ sở dữ liệu (Docker)
 
+Trên **macOS** và **Windows**, mở **Docker Desktop** trước (thanh menu / khay hệ thống phải báo Docker đang chạy). Sau đó từ thư mục gốc:
+
 ```bash
 docker compose up --build
 ```
+
+*(Nếu máy chỉ có lệnh cũ: `docker-compose up --build` — cùng file `docker-compose.yml`.)*
 
 - **API REST:** `http://localhost:8080` (prefix `/api/...`)
 - **PostgreSQL:** `localhost:5432` — user / password / database: `emp` / `emp` / `empdb`
@@ -156,6 +160,7 @@ CORS: nếu `app.cors.allowed-origins` để trống, backend cho phép pattern 
 
 | Hiện tượng | Gợi ý |
 |------------|--------|
+| **`Cannot connect to the Docker daemon`** / **`Is the docker daemon running?`** | **macOS / Windows:** mở Docker Desktop và đợi tới khi trạng thái *running*. Thử `docker info` — nếu vẫn lỗi, khởi động lại Docker Desktop. **Windows:** bật WSL2 và tích hợp distro trong Docker Desktop (Settings → Resources → WSL integration). **Linux:** `sudo systemctl start docker` (hoặc tương đương). Socket (`unix://.../docker.sock`) do Docker client tự chọn theo OS — không cần sửa file compose. |
 | Port **8080** hoặc **5432** đã được dùng | Đổi mapping port trong `docker-compose.yml` hoặc tắt ứng dụng đang chiếm port |
 | Port **5173** bận | Đổi `server.port` trong `vite.config.ts` hoặc chạy `npm run dev -- --port 5174` |
 | Frontend không gọi được API | Đảm bảo backend đang chạy tại `localhost:8080`; kiểm tra proxy `/api` trong Vite |

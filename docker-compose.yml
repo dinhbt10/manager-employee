@@ -1,3 +1,7 @@
+# Chạy trên macOS / Windows / Linux: cần Docker Engine (Docker Desktop trên Mac/Windows).
+# Nếu lỗi "Cannot connect to the Docker daemon": mở Docker Desktop và đợi icon "running", rồi chạy lại.
+name: manager-employee
+
 services:
   db:
     image: postgres:16-alpine
