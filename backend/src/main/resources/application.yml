@@ -3,7 +3,8 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Render/Railway set PORT; local/docker often use SERVER_PORT
+  port: ${PORT:${SERVER_PORT:8080}}
 
 management:
   endpoints:
