@@ -25,6 +25,49 @@ import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
 import { Eye, Pencil, UserPlus } from "lucide-react";
 
+/**
+ * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
+ * Chỉ EMPLOYEE (và trường hợp có gán thêm) mới hiển thị đúng danh sách mã trong `user_features`.
+ */
+function permissionBadges(user: User) {
+  if (user.role === "ADMIN") {
+    return (
+      <Badge key="admin-all" variant="default" className="bg-zinc-900 text-white hover:bg-zinc-900">
+        Toàn quyền hệ thống
+      </Badge>
+    );
+  }
+  if (user.role === "MANAGER" && user.features.length === 0) {
+    return (
+      <Badge key="mgr-scope" variant="secondary">
+        Đủ quyền trong phòng ban
+      </Badge>
+    );
+  }
+  if (user.features.length === 0) {
+    return (
+      <Badge key="ro" variant="warning">
+        Chỉ xem
+      </Badge>
+    );
+  }
+  return user.features.map((c) => (
+    <Badge key={c} variant="secondary" className="font-mono text-[10px]">
+      {c}
+    </Badge>
+  ));
+}
+
+function permissionTooltip(user: User): string {
+  if (user.role === "ADMIN") {
+    return "Quản trị viên — toàn quyền (không cần gán từng chức năng trong DB)";
+  }
+  if (user.role === "MANAGER" && user.features.length === 0) {
+    return "Quản lý — đủ quyền với nhân viên thuộc phòng ban của mình";
+  }
+  return user.features.join(", ") || "Chỉ xem (chưa cấp chức năng)";
+}
+
 export function EmployeesPage() {
   const { isAdmin, isManager } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
@@ -204,16 +247,8 @@ export function EmployeesPage() {
                       <CellWithTooltip text={u.departmentName ?? undefined} />
                     </TableCell>
                     <TableCell className="max-w-[240px]">
-                      <div className="flex flex-wrap gap-1" title={u.features.join(", ") || "Chỉ xem"}>
-                        {u.features.length === 0 ? (
-                          <Badge variant="warning">Chỉ xem</Badge>
-                        ) : (
-                          u.features.map((c) => (
-                            <Badge key={c} variant="secondary" className="font-mono text-[10px]">
-                              {c}
-                            </Badge>
-                          ))
-                        )}
+                      <div className="flex flex-wrap gap-1" title={permissionTooltip(u)}>
+                        {permissionBadges(u)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -288,17 +323,7 @@ function EmployeeDetailDialog({
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Chức năng đã cấp</dt>
-            <dd className="mt-1.5 flex flex-wrap gap-1">
-              {user.features.length === 0 ? (
-                <Badge variant="warning">Chưa có</Badge>
-              ) : (
-                user.features.map((c) => (
-                  <Badge key={c} variant="secondary" className="font-mono text-[10px]">
-                    {c}
-                  </Badge>
-                ))
-              )}
-            </dd>
+            <dd className="mt-1.5 flex flex-wrap gap-1">{permissionBadges(user)}</dd>
           </div>
         </dl>
       </DialogContent>
@@ -397,17 +422,22 @@ function EditUserDialog({
   async function save() {
     setSaving(true);
     try {
-      const activeCodes = new Set(features.map((f) => f.code));
-      const featureCodes = [...selected].filter((code) => activeCodes.has(code));
-      const droppedInactive = [...selected].filter((code) => !activeCodes.has(code));
-      if (droppedInactive.length > 0) {
-        toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi phân quyền.`);
+      if (user.role === "ADMIN") {
+        await api.patch(`/users/${user.id}`, { fullName: fullName.trim() });
+        toast.success("Đã cập nhật nhân viên");
+      } else {
+        const activeCodes = new Set(features.map((f) => f.code));
+        const featureCodes = [...selected].filter((code) => activeCodes.has(code));
+        const droppedInactive = [...selected].filter((code) => !activeCodes.has(code));
+        if (droppedInactive.length > 0) {
+          toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi phân quyền.`);
+        }
+        await api.patch(`/users/${user.id}`, {
+          fullName: fullName.trim(),
+          featureCodes,
+        });
+        toast.success("Đã cập nhật nhân viên và phân quyền");
       }
-      await api.patch(`/users/${user.id}`, {
-        fullName: fullName.trim(),
-        featureCodes,
-      });
-      toast.success("Đã cập nhật nhân viên và phân quyền");
       setOpen(false);
       onDone();
     } catch (e) {
@@ -429,25 +459,36 @@ function EditUserDialog({
         <DialogHeader>
           <DialogTitle>Phân quyền — {user.fullName}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-zinc-500">Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ chỉ xem được dữ liệu.</p>
+        <p className="text-xs text-zinc-500">
+          {user.role === "ADMIN" ? (
+            <>
+              Quản trị viên có <strong>toàn quyền hệ thống</strong> theo code (không cần gán từng chức năng trong DB).
+              Chỉnh họ tên bên dưới nếu cần.
+            </>
+          ) : (
+            <>Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ chỉ xem được dữ liệu.</>
+          )}
+        </p>
         <div>
           <Label>Họ tên</Label>
           <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
         </div>
-        <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-          {featureOptions.map((f) => (
-            <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={selected.has(f.code)}
-                onChange={() => toggle(f.code)}
-                className="rounded border-zinc-300"
-              />
-              <span>{f.name}</span>
-              <span className="font-mono text-xs text-zinc-500">{f.code}</span>
-            </label>
-          ))}
-        </div>
+        {user.role !== "ADMIN" && (
+          <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+            {featureOptions.map((f) => (
+              <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selected.has(f.code)}
+                  onChange={() => toggle(f.code)}
+                  className="rounded border-zinc-300"
+                />
+                <span>{f.name}</span>
+                <span className="font-mono text-xs text-zinc-500">{f.code}</span>
+              </label>
+            ))}
+          </div>
+        )}
         <Button className="w-full" onClick={() => void save()} disabled={!fullName.trim() || saving}>
           {saving && <Spinner />}
           Lưu
