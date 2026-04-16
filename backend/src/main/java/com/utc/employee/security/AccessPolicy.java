@@ -26,12 +26,18 @@ public class AccessPolicy {
     }
 
     public boolean canManageDepartment(AuthUser u) {
-        return isAdmin(u);
+        if (isAdmin(u)) {
+            return true;
+        }
+        return hasFeature(u, FeatureCodes.DEPT_VIEW);
     }
 
     /** Danh mục mã chức năng (cấu hình hệ thống) — chỉ Admin. */
     public boolean canManageFeatures(AuthUser u) {
-        return isAdmin(u);
+        if (isAdmin(u)) {
+            return true;
+        }
+        return hasFeature(u, FeatureCodes.FEATURE_VIEW);
     }
 
     public boolean hasFeature(AuthUser u, String code) {
@@ -67,16 +73,17 @@ public class AccessPolicy {
         }
         return hasFeature(viewer, FeatureCodes.EMP_VIEW_ALL)
                 || (hasFeature(viewer, FeatureCodes.EMP_VIEW_DEPT)
-                && target.getDepartment() != null
-                && viewer.departmentId() != null
-                && viewer.departmentId().equals(target.getDepartment().getId()));
+                        && target.getDepartment() != null
+                        && viewer.departmentId() != null
+                        && viewer.departmentId().equals(target.getDepartment().getId()));
     }
 
     public boolean canEditEmployee(AuthUser viewer, UserAccount target) {
         if (isAdmin(viewer)) {
             return true;
         }
-        if (isManager(viewer) && managerHasDeptScope(viewer, target.getDepartment() != null ? target.getDepartment().getId() : null)) {
+        if (isManager(viewer) && managerHasDeptScope(viewer,
+                target.getDepartment() != null ? target.getDepartment().getId() : null)) {
             return true;
         }
         if (hasFeature(viewer, FeatureCodes.EMP_EDIT_ALL)) {
@@ -98,8 +105,8 @@ public class AccessPolicy {
         }
         return hasFeature(u, FeatureCodes.REQ_APPROVE_ALL)
                 || (hasFeature(u, FeatureCodes.REQ_APPROVE_DEPT)
-                && targetUser.getDepartment() != null
-                && u.departmentId() != null
-                && u.departmentId().equals(targetUser.getDepartment().getId()));
+                        && targetUser.getDepartment() != null
+                        && u.departmentId() != null
+                        && u.departmentId().equals(targetUser.getDepartment().getId()));
     }
 }

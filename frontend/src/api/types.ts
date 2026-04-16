@@ -9,6 +9,14 @@ export const FeatureCodes = {
   EMP_EDIT_DEPT: "EMP_EDIT_DEPT",
   EMP_VIEW_DEPT: "EMP_VIEW_DEPT",
   REQ_APPROVE_DEPT: "REQ_APPROVE_DEPT",
+  DEPT_VIEW: "DEPT_VIEW",
+  DEPT_CREATE: "DEPT_CREATE",
+  DEPT_EDIT: "DEPT_EDIT",
+  DEPT_DELETE: "DEPT_DELETE",
+  FEATURE_VIEW: "FEATURE_VIEW",
+  FEATURE_CREATE: "FEATURE_CREATE",
+  FEATURE_EDIT: "FEATURE_EDIT",
+  FEATURE_DELETE: "FEATURE_DELETE",
 } as const;
 
 export type FeatureCode = (typeof FeatureCodes)[keyof typeof FeatureCodes];

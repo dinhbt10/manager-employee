@@ -32,7 +32,15 @@ public class DataLoader {
                     f("REQ_APPROVE_ALL", "Duyệt request toàn hệ thống"),
                     f("EMP_EDIT_DEPT", "Sửa NV trong phòng"),
                     f("EMP_VIEW_DEPT", "Xem NV trong phòng"),
-                    f("REQ_APPROVE_DEPT", "Duyệt request trong phòng"));
+                    f("REQ_APPROVE_DEPT", "Duyệt request trong phòng"),
+                    f("DEPT_VIEW", "Xem danh sách phòng ban"),
+                    f("DEPT_CREATE", "Thêm phòng ban"),
+                    f("DEPT_EDIT", "Sửa phòng ban"),
+                    f("DEPT_DELETE", "Xóa phòng ban"),
+                    f("FEATURE_VIEW", "Xem danh sách chức năng"),
+                    f("FEATURE_CREATE", "Thêm chức năng"),
+                    f("FEATURE_EDIT", "Sửa chức năng"),
+                    f("FEATURE_DELETE", "Xóa chức năng"));
             featureRepository.saveAll(feats);
 
             Department pbIt = new Department();
@@ -68,7 +76,7 @@ public class DataLoader {
                     featureRepository.findByCode("EMP_EDIT_DEPT").orElseThrow(),
                     featureRepository.findByCode("EMP_VIEW_DEPT").orElseThrow(),
                     featureRepository.findByCode("REQ_APPROVE_DEPT").orElseThrow(),
-                    featureRepository.findByCode("EMP_VIEW_ALL").orElseThrow())));
+                    featureRepository.findByCode("DEPT_VIEW").orElseThrow())));
             userAccountRepository.save(manager);
 
             UserAccount emp = new UserAccount();

@@ -26,4 +26,22 @@ public final class FeatureCodes {
     public static final String EMP_VIEW_DEPT = "EMP_VIEW_DEPT";
     /** Duyệt request trong phòng */
     public static final String REQ_APPROVE_DEPT = "REQ_APPROVE_DEPT";
+
+    /** Xem danh sách phòng ban */
+    public static final String DEPT_VIEW = "DEPT_VIEW";
+    /** Thêm phòng ban */
+    public static final String DEPT_CREATE = "DEPT_CREATE";
+    /** Sửa phòng ban */
+    public static final String DEPT_EDIT = "DEPT_EDIT";
+    /** Xóa phòng ban */
+    public static final String DEPT_DELETE = "DEPT_DELETE";
+
+    /** Xem danh sách chức năng */
+    public static final String FEATURE_VIEW = "FEATURE_VIEW";
+    /** Thêm chức năng */
+    public static final String FEATURE_CREATE = "FEATURE_CREATE";
+    /** Sửa chức năng */
+    public static final String FEATURE_EDIT = "FEATURE_EDIT";
+    /** Xóa chức năng */
+    public static final String FEATURE_DELETE = "FEATURE_DELETE";
 }

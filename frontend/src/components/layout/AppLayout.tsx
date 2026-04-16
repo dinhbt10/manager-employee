@@ -22,8 +22,8 @@ export function AppLayout() {
   const canSeeEmployees =
     hasFeature(FeatureCodes.EMP_VIEW_ALL) ||
     hasFeature(FeatureCodes.EMP_VIEW_DEPT);
-  const canSeeDepartments = hasFeature(FeatureCodes.EMP_VIEW_ALL); // Admin only
-  const canSeeFeatures = hasFeature(FeatureCodes.EMP_VIEW_ALL); // Admin only
+  const canSeeDepartments = hasFeature(FeatureCodes.DEPT_VIEW);
+  const canSeeFeatures = hasFeature(FeatureCodes.FEATURE_VIEW);
 
   return (
     <div className="flex min-h-screen">

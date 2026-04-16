@@ -38,7 +38,10 @@ function RequireEmployeeView() {
 
 function RequireAdminView() {
   const { hasFeature } = useAuth();
-  if (!hasFeature(FeatureCodes.EMP_VIEW_ALL)) {
+  if (
+    !hasFeature(FeatureCodes.DEPT_VIEW) &&
+    !hasFeature(FeatureCodes.FEATURE_VIEW)
+  ) {
     return <Navigate to="/requests" replace />;
   }
   return <Outlet />;

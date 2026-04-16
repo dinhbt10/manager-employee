@@ -47,6 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     localStorage.removeItem(USER_KEY);
+    // Clear all localStorage
+    localStorage.clear();
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
     setTok(null);
     setUser(null);
   }, []);
