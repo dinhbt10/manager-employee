@@ -19,8 +19,7 @@ public class DataLoader {
             DepartmentRepository departmentRepository,
             UserAccountRepository userAccountRepository,
             PermissionRequestRepository permissionRequestRepository,
-            PasswordEncoder passwordEncoder
-    ) {
+            PasswordEncoder passwordEncoder) {
         return args -> {
             if (featureRepository.count() > 0) {
                 return;
@@ -33,8 +32,7 @@ public class DataLoader {
                     f("REQ_APPROVE_ALL", "Duyệt request toàn hệ thống"),
                     f("EMP_EDIT_DEPT", "Sửa NV trong phòng"),
                     f("EMP_VIEW_DEPT", "Xem NV trong phòng"),
-                    f("REQ_APPROVE_DEPT", "Duyệt request trong phòng")
-            );
+                    f("REQ_APPROVE_DEPT", "Duyệt request trong phòng"));
             featureRepository.saveAll(feats);
 
             Department pbIt = new Department();
@@ -56,6 +54,7 @@ public class DataLoader {
             admin.setEmployeeCode("NV0001");
             admin.setRole(Role.ADMIN);
             admin.setDepartment(null);
+            admin.setFeatures(new HashSet<>(feats));
             userAccountRepository.save(admin);
 
             UserAccount manager = new UserAccount();
@@ -65,6 +64,11 @@ public class DataLoader {
             manager.setEmployeeCode("NV0002");
             manager.setRole(Role.MANAGER);
             manager.setDepartment(pbIt);
+            manager.setFeatures(new HashSet<>(List.of(
+                    featureRepository.findByCode("EMP_EDIT_DEPT").orElseThrow(),
+                    featureRepository.findByCode("EMP_VIEW_DEPT").orElseThrow(),
+                    featureRepository.findByCode("REQ_APPROVE_DEPT").orElseThrow(),
+                    featureRepository.findByCode("EMP_VIEW_ALL").orElseThrow())));
             userAccountRepository.save(manager);
 
             UserAccount emp = new UserAccount();
@@ -74,7 +78,8 @@ public class DataLoader {
             emp.setEmployeeCode("NV0003");
             emp.setRole(Role.EMPLOYEE);
             emp.setDepartment(pbIt);
-            emp.setFeatures(new HashSet<>());
+            emp.setFeatures(new HashSet<>(List.of(
+                    featureRepository.findByCode("EMP_VIEW_DEPT").orElseThrow())));
             userAccountRepository.save(emp);
 
             PermissionRequest req = new PermissionRequest();
@@ -85,8 +90,7 @@ public class DataLoader {
             req.setRequester(emp);
             req.setTargetUser(emp);
             req.setRequestedFeatures(new HashSet<>(List.of(
-                    featureRepository.findByCode("EMP_VIEW_DEPT").orElseThrow()
-            )));
+                    featureRepository.findByCode("EMP_VIEW_DEPT").orElseThrow())));
             permissionRequestRepository.save(req);
         };
     }

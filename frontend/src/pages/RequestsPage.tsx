@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
-import type { Department, FeatureOption, LoginResponse, PermissionRequest, User } from "@/api/types";
+import type {
+  Department,
+  FeatureOption,
+  LoginResponse,
+  PermissionRequest,
+  User,
+  FeatureCode,
+} from "@/api/types";
+import { FeatureCodes } from "@/api/types";
 import { useAuth } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ListSearchBar } from "@/components/ListSearchBar";
@@ -21,13 +29,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
 import { Check, Eye, Pencil, Plus, Send, Trash2, XCircle } from "lucide-react";
 
-function statusVariant(s: string): "default" | "success" | "warning" | "destructive" | "secondary" {
+function statusVariant(
+  s: string,
+): "default" | "success" | "warning" | "destructive" | "secondary" {
   switch (s) {
     case "APPROVED":
       return "success";
@@ -52,11 +69,15 @@ function statusLabel(s: string) {
   return m[s] ?? s;
 }
 
-function canApproveRequest(user: LoginResponse | null | undefined, r: PermissionRequest): boolean {
+function canApproveRequest(
+  user: LoginResponse | null | undefined,
+  r: PermissionRequest,
+  hasFeature: (code: FeatureCode) => boolean,
+): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
+  if (hasFeature(FeatureCodes.REQ_APPROVE_ALL)) return true;
   if (
-    user.role === "MANAGER" &&
+    hasFeature(FeatureCodes.REQ_APPROVE_DEPT) &&
     user.departmentId != null &&
     r.targetDepartmentId != null &&
     r.targetDepartmentId === user.departmentId
@@ -66,7 +87,10 @@ function canApproveRequest(user: LoginResponse | null | undefined, r: Permission
   return false;
 }
 
-function canDeleteRequest(user: LoginResponse | null | undefined, r: PermissionRequest): boolean {
+function canDeleteRequest(
+  user: LoginResponse | null | undefined,
+  r: PermissionRequest,
+): boolean {
   if (!user) return false;
   if (!["DRAFT", "REJECTED", "REVOKED"].includes(r.status)) return false;
   if (user.role === "ADMIN") return true;
@@ -83,7 +107,10 @@ function canDeleteRequest(user: LoginResponse | null | undefined, r: PermissionR
   return false;
 }
 
-function canEditRequest(user: LoginResponse | null | undefined, r: PermissionRequest): boolean {
+function canEditRequest(
+  user: LoginResponse | null | undefined,
+  r: PermissionRequest,
+): boolean {
   if (!user?.userId) return false;
   if (r.requesterId !== user.userId) return false;
   return ["DRAFT", "REJECTED", "REVOKED"].includes(r.status);
@@ -106,7 +133,7 @@ type ReqApplied = {
 };
 
 export function RequestsPage() {
-  const { user } = useAuth();
+  const { user, hasFeature } = useAuth();
   const [rows, setRows] = useState<PermissionRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
@@ -135,12 +162,17 @@ export function RequestsPage() {
         status: TAB_STATUS_PARAMS[tab],
       };
       if (applied.q.trim()) params.q = applied.q.trim();
-      if (applied.departmentId != null) params.departmentId = applied.departmentId;
+      if (applied.departmentId != null)
+        params.departmentId = applied.departmentId;
       if (applied.requesterId != null) params.requesterId = applied.requesterId;
-      if (applied.targetUserId != null) params.targetUserId = applied.targetUserId;
-      if (applied.createdFrom) params.createdFrom = new Date(applied.createdFrom).toISOString();
-      if (applied.createdTo) params.createdTo = new Date(applied.createdTo).toISOString();
-      if (applied.featureCode.trim()) params.featureCode = applied.featureCode.trim();
+      if (applied.targetUserId != null)
+        params.targetUserId = applied.targetUserId;
+      if (applied.createdFrom)
+        params.createdFrom = new Date(applied.createdFrom).toISOString();
+      if (applied.createdTo)
+        params.createdTo = new Date(applied.createdTo).toISOString();
+      if (applied.featureCode.trim())
+        params.featureCode = applied.featureCode.trim();
 
       const [r, u, f] = await Promise.all([
         api.get<PermissionRequest[]>("/requests", { params }),
@@ -206,7 +238,13 @@ export function RequestsPage() {
       <PageHeader
         title="Request cấp quyền"
         description="Tìm nhanh theo mã, tiêu đề, người liên quan, phòng ban. Tìm nâng cao: phòng, người tạo/đích, thời gian, mã chức năng."
-        actions={<CreateRequestDialog users={users} features={features} onCreated={load} />}
+        actions={
+          <CreateRequestDialog
+            users={users}
+            features={features}
+            onCreated={load}
+          />
+        }
       />
 
       <Card>
@@ -236,10 +274,14 @@ export function RequestsPage() {
                     <Label>Phòng ban (đối tượng)</Label>
                     <select
                       className={cn(
-                        "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                        "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                       )}
                       value={advDept === "" ? "" : String(advDept)}
-                      onChange={(e) => setAdvDept(e.target.value === "" ? "" : Number(e.target.value))}
+                      onChange={(e) =>
+                        setAdvDept(
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
                     >
                       <option value="">Tất cả</option>
                       {departments.map((d) => (
@@ -254,10 +296,14 @@ export function RequestsPage() {
                   <Label>Người tạo request</Label>
                   <select
                     className={cn(
-                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                     )}
                     value={advReq === "" ? "" : String(advReq)}
-                    onChange={(e) => setAdvReq(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) =>
+                      setAdvReq(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
                   >
                     <option value="">Tất cả</option>
                     {users.map((u) => (
@@ -271,10 +317,14 @@ export function RequestsPage() {
                   <Label>Đối tượng được cấp</Label>
                   <select
                     className={cn(
-                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                     )}
                     value={advTarget === "" ? "" : String(advTarget)}
-                    onChange={(e) => setAdvTarget(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) =>
+                      setAdvTarget(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
                   >
                     <option value="">Tất cả</option>
                     {users.map((u) => (
@@ -308,7 +358,7 @@ export function RequestsPage() {
                   <Label>Có mã chức năng</Label>
                   <select
                     className={cn(
-                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                     )}
                     value={advFeat}
                     onChange={(e) => setAdvFeat(e.target.value)}
@@ -350,7 +400,11 @@ export function RequestsPage() {
             }
           />
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="px-6">
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as typeof tab)}
+            className="px-6"
+          >
             <TabsList className="grid h-11 w-full max-w-xl grid-cols-3 gap-1 p-1">
               <TabsTrigger value="draft">Đang soạn</TabsTrigger>
               <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
@@ -366,6 +420,7 @@ export function RequestsPage() {
                 features={features}
                 onAction={load}
                 emptyMessage={emptyHint}
+                hasFeature={hasFeature}
               />
             </TabsContent>
             <TabsContent value="pending" className="mt-4">
@@ -378,6 +433,7 @@ export function RequestsPage() {
                 features={features}
                 onAction={load}
                 emptyMessage={emptyHint}
+                hasFeature={hasFeature}
               />
             </TabsContent>
             <TabsContent value="approved" className="mt-4">
@@ -390,6 +446,7 @@ export function RequestsPage() {
                 features={features}
                 onAction={load}
                 emptyMessage={emptyHint}
+                hasFeature={hasFeature}
               />
             </TabsContent>
           </Tabs>
@@ -408,6 +465,7 @@ type TableProps = {
   features: FeatureOption[];
   onAction: () => void;
   emptyMessage: string;
+  hasFeature: (code: FeatureCode) => boolean;
 };
 
 function RequestTable({
@@ -419,13 +477,18 @@ function RequestTable({
   features,
   onAction,
   emptyMessage,
+  hasFeature,
 }: TableProps) {
   const [rejectOpen, setRejectOpen] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [detail, setDetail] = useState<PermissionRequest | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<PermissionRequest | null>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState<PermissionRequest | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<PermissionRequest | null>(
+    null,
+  );
+  const [confirmRevoke, setConfirmRevoke] = useState<PermissionRequest | null>(
+    null,
+  );
 
   async function submit(id: number) {
     try {
@@ -478,14 +541,18 @@ function RequestTable({
     return <TableSkeleton rows={6} columns={5} />;
   }
   if (rows.length === 0) {
-    return <p className="px-6 pb-8 text-center text-sm text-zinc-500">{emptyMessage}</p>;
+    return (
+      <p className="px-6 pb-8 text-center text-sm text-zinc-500">
+        {emptyMessage}
+      </p>
+    );
   }
 
   return (
     <>
       <Table>
         <TableHeader>
-                <TableRow className="hover:bg-transparent">
+          <TableRow className="hover:bg-transparent">
             <TableHead>Mã</TableHead>
             <TableHead>Tiêu đề</TableHead>
             <TableHead>Đối tượng</TableHead>
@@ -516,7 +583,9 @@ function RequestTable({
                 />
               </TableCell>
               <TableCell>
-                <Badge variant={statusVariant(r.status)}>{statusLabel(r.status)}</Badge>
+                <Badge variant={statusVariant(r.status)}>
+                  {statusLabel(r.status)}
+                </Badge>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-wrap justify-end gap-1.5">
@@ -536,7 +605,12 @@ function RequestTable({
                     <>
                       {canEditRequest(user, r) && (
                         <span onClick={(e) => e.stopPropagation()}>
-                          <EditRequestDialog request={r} users={users} features={features} onDone={onAction} />
+                          <EditRequestDialog
+                            request={r}
+                            users={users}
+                            features={features}
+                            onDone={onAction}
+                          />
                         </span>
                       )}
                       {canEditRequest(user, r) && (
@@ -568,43 +642,45 @@ function RequestTable({
                       )}
                     </>
                   )}
-                  {mode === "pending" && canApproveRequest(user, r) && (
-                    <>
+                  {mode === "pending" &&
+                    canApproveRequest(user, r, hasFeature) && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void approve(r.id);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                          Duyệt
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRejectOpen(r.id);
+                          }}
+                        >
+                          <XCircle className="h-3 w-3" />
+                          Từ chối
+                        </Button>
+                      </>
+                    )}
+                  {mode === "approved" &&
+                    canApproveRequest(user, r, hasFeature) && (
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          void approve(r.id);
+                          setConfirmRevoke(r);
                         }}
                       >
-                        <Check className="h-3 w-3" />
-                        Duyệt
+                        Gỡ quyền
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRejectOpen(r.id);
-                        }}
-                      >
-                        <XCircle className="h-3 w-3" />
-                        Từ chối
-                      </Button>
-                    </>
-                  )}
-                  {mode === "approved" && canApproveRequest(user, r) && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmRevoke(r);
-                      }}
-                    >
-                      Gỡ quyền
-                    </Button>
-                  )}
+                    )}
                 </div>
               </TableCell>
             </TableRow>
@@ -612,7 +688,11 @@ function RequestTable({
         </TableBody>
       </Table>
 
-      <RequestDetailDialog request={detail} open={detail !== null} onOpenChange={(o) => !o && setDetail(null)} />
+      <RequestDetailDialog
+        request={detail}
+        open={detail !== null}
+        onOpenChange={(o) => !o && setDetail(null)}
+      />
 
       <ConfirmDialog
         open={confirmDelete !== null}
@@ -645,7 +725,10 @@ function RequestTable({
         }}
       />
 
-      <Dialog open={rejectOpen !== null} onOpenChange={() => setRejectOpen(null)}>
+      <Dialog
+        open={rejectOpen !== null}
+        onOpenChange={() => setRejectOpen(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Từ chối request</DialogTitle>
@@ -687,41 +770,65 @@ function RequestDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl">Chi tiết request — {request.code}</DialogTitle>
+          <DialogTitle className="text-xl">
+            Chi tiết request — {request.code}
+          </DialogTitle>
         </DialogHeader>
         <dl className="space-y-3 text-sm">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Tiêu đề</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Tiêu đề
+            </dt>
             <dd className="mt-0.5 text-zinc-900">{request.title}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Ghi chú</dt>
-            <dd className="mt-0.5 whitespace-pre-wrap text-zinc-700">{request.description ?? "—"}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Ghi chú
+            </dt>
+            <dd className="mt-0.5 whitespace-pre-wrap text-zinc-700">
+              {request.description ?? "—"}
+            </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Người tạo</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Người tạo
+            </dt>
             <dd className="mt-0.5 text-zinc-900">{request.requesterName}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Đối tượng</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Đối tượng
+            </dt>
             <dd className="mt-0.5 text-zinc-900">
               {request.targetUserName}
               {request.targetDepartmentName && (
-                <span className="block text-xs text-zinc-500">{request.targetDepartmentName}</span>
+                <span className="block text-xs text-zinc-500">
+                  {request.targetDepartmentName}
+                </span>
               )}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Trạng thái</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Trạng thái
+            </dt>
             <dd className="mt-1.5">
-              <Badge variant={statusVariant(request.status)}>{statusLabel(request.status)}</Badge>
+              <Badge variant={statusVariant(request.status)}>
+                {statusLabel(request.status)}
+              </Badge>
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Chức năng xin cấp</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Chức năng xin cấp
+            </dt>
             <dd className="mt-1.5 flex flex-wrap gap-1">
               {[...request.requestedFeatureCodes].sort().map((c) => (
-                <Badge key={c} variant="secondary" className="font-mono text-[10px]">
+                <Badge
+                  key={c}
+                  variant="secondary"
+                  className="font-mono text-[10px]"
+                >
                   {c}
                 </Badge>
               ))}
@@ -729,13 +836,17 @@ function RequestDetailDialog({
           </div>
           {request.reviewerName && (
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Người duyệt</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Người duyệt
+              </dt>
               <dd className="mt-0.5 text-zinc-900">{request.reviewerName}</dd>
             </div>
           )}
           {request.rejectReason && (
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Lý do từ chối</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Lý do từ chối
+              </dt>
               <dd className="mt-0.5 text-red-700">{request.rejectReason}</dd>
             </div>
           )}
@@ -761,8 +872,12 @@ function EditRequestDialog({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(request.title);
   const [description, setDescription] = useState(request.description ?? "");
-  const [targetUserId, setTargetUserId] = useState<number>(request.targetUserId);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(request.requestedFeatureCodes));
+  const [targetUserId, setTargetUserId] = useState<number>(
+    request.targetUserId,
+  );
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(request.requestedFeatureCodes),
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -796,8 +911,12 @@ function EditRequestDialog({
     setSaving(true);
     try {
       const activeCodes = new Set(features.map((f) => f.code));
-      const requestedFeatureCodes = [...selected].filter((code) => activeCodes.has(code));
-      const droppedInactive = [...selected].filter((code) => !activeCodes.has(code));
+      const requestedFeatureCodes = [...selected].filter((code) =>
+        activeCodes.has(code),
+      );
+      const droppedInactive = [...selected].filter(
+        (code) => !activeCodes.has(code),
+      );
       if (droppedInactive.length > 0) {
         toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi request.`);
       }
@@ -825,7 +944,11 @@ function EditRequestDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Pencil className="h-3 w-3" />
           Sửa
         </Button>
@@ -837,21 +960,30 @@ function EditRequestDialog({
         <div className="space-y-3">
           <div>
             <Label>Tiêu đề</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={255}
+            />
           </div>
           <div>
             <Label>Ghi chú</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div>
             <Label>Áp dụng cho nhân viên</Label>
             {isEmployee && (
-              <p className="mt-1 text-xs text-zinc-500">Bạn chỉ có thể xin quyền cho chính mình.</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Bạn chỉ có thể xin quyền cho chính mình.
+              </p>
             )}
             <select
               className={cn(
                 "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
-                isEmployee && "cursor-not-allowed opacity-90"
+                isEmployee && "cursor-not-allowed opacity-90",
               )}
               value={String(targetUserId)}
               onChange={(e) => setTargetUserId(Number(e.target.value))}
@@ -868,7 +1000,10 @@ function EditRequestDialog({
             <Label>Chức năng (multi-select)</Label>
             <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
               {featureOptions.map((f) => (
-                <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
                   <input
                     type="checkbox"
                     checked={selected.has(f.code)}
@@ -876,12 +1011,18 @@ function EditRequestDialog({
                     className="rounded border-zinc-300"
                   />
                   <span className="text-zinc-800">{f.name}</span>
-                  <span className="font-mono text-xs text-zinc-500">{f.code}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
                 </label>
               ))}
             </div>
           </div>
-          <Button className="w-full" onClick={() => void save()} disabled={!title.trim() || selected.size === 0 || saving}>
+          <Button
+            className="w-full"
+            onClick={() => void save()}
+            disabled={!title.trim() || selected.size === 0 || saving}
+          >
             {saving && <Spinner />}
             Lưu thay đổi
           </Button>
@@ -982,20 +1123,27 @@ function CreateRequestDialog({
           </div>
           <div>
             <Label>Ghi chú</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div>
             <Label>Áp dụng cho nhân viên</Label>
             {isEmployee && (
-              <p className="mt-1 text-xs text-zinc-500">Mặc định là tài khoản của bạn (xin quyền cho chính mình).</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Mặc định là tài khoản của bạn (xin quyền cho chính mình).
+              </p>
             )}
             <select
               className={cn(
                 "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
-                isEmployee && "cursor-not-allowed opacity-90"
+                isEmployee && "cursor-not-allowed opacity-90",
               )}
               value={targetUserId === "" ? "" : String(targetUserId)}
-              onChange={(e) => setTargetUserId(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                setTargetUserId(e.target.value ? Number(e.target.value) : "")
+              }
               disabled={isEmployee}
             >
               {!isEmployee && <option value="">— Chọn —</option>}
@@ -1010,7 +1158,10 @@ function CreateRequestDialog({
             <Label>Chức năng (multi-select)</Label>
             <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
               {features.map((f) => (
-                <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
                   <input
                     type="checkbox"
                     checked={selected.has(f.code)}
@@ -1018,7 +1169,9 @@ function CreateRequestDialog({
                     className="rounded border-zinc-300"
                   />
                   <span className="text-zinc-800">{f.name}</span>
-                  <span className="font-mono text-xs text-zinc-500">{f.code}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
                 </label>
               ))}
             </div>
@@ -1026,7 +1179,12 @@ function CreateRequestDialog({
           <Button
             className="w-full"
             onClick={() => void create()}
-            disabled={!title.trim() || targetUserId === "" || selected.size === 0 || saving}
+            disabled={
+              !title.trim() ||
+              targetUserId === "" ||
+              selected.size === 0 ||
+              saving
+            }
           >
             {saving && <Spinner />}
             Lưu nháp

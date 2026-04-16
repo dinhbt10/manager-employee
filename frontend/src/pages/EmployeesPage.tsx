@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { Department, FeatureOption, Role, User } from "@/api/types";
+import { FeatureCodes } from "@/api/types";
 import { useAuth, roleLabel } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ListSearchBar } from "@/components/ListSearchBar";
@@ -20,7 +21,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
 import { Eye, Pencil, UserPlus } from "lucide-react";
@@ -32,7 +40,11 @@ import { Eye, Pencil, UserPlus } from "lucide-react";
 function permissionBadges(user: User) {
   if (user.role === "ADMIN") {
     return (
-      <Badge key="admin-all" variant="default" className="bg-zinc-900 text-white hover:bg-zinc-900">
+      <Badge
+        key="admin-all"
+        variant="default"
+        className="bg-zinc-900 text-white hover:bg-zinc-900"
+      >
         Toàn quyền hệ thống
       </Badge>
     );
@@ -69,7 +81,7 @@ function permissionTooltip(user: User): string {
 }
 
 export function EmployeesPage() {
-  const { isAdmin, isManager } = useAuth();
+  const { isAdmin, hasFeature } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -80,7 +92,11 @@ export function EmployeesPage() {
   const [advOpen, setAdvOpen] = useState(false);
   const [advRole, setAdvRole] = useState<"" | Role>("");
   const [advDeptId, setAdvDeptId] = useState<number | "">("");
-  const [applied, setApplied] = useState<{ q: string; role: string; departmentId?: number }>({
+  const [applied, setApplied] = useState<{
+    q: string;
+    role: string;
+    departmentId?: number;
+  }>({
     q: "",
     role: "",
   });
@@ -91,7 +107,8 @@ export function EmployeesPage() {
       const params: Record<string, string | number> = {};
       if (applied.q.trim()) params.q = applied.q.trim();
       if (applied.role) params.role = applied.role;
-      if (applied.departmentId != null) params.departmentId = applied.departmentId;
+      if (applied.departmentId != null)
+        params.departmentId = applied.departmentId;
 
       const [u, f] = await Promise.all([
         api.get<User[]>("/users", { params }),
@@ -130,13 +147,16 @@ export function EmployeesPage() {
     });
   }
 
-
   return (
     <div className="animate-fade-in-up">
       <PageHeader
         title="Nhân viên"
         description="Danh sách theo phân quyền: Admin toàn hệ thống; Quản lý theo phòng; NV chỉ thấy hồ sơ của mình."
-        actions={isAdmin ? <CreateUserDialog features={features} onDone={load} /> : null}
+        actions={
+          hasFeature(FeatureCodes.EMP_CREATE) ? (
+            <CreateUserDialog features={features} onDone={load} />
+          ) : null
+        }
       />
       <Card>
         <CardContent className="space-y-0 p-0 pt-6">
@@ -160,7 +180,7 @@ export function EmployeesPage() {
                   <Label>Vai trò</Label>
                   <select
                     className={cn(
-                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                      "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                     )}
                     value={advRole}
                     onChange={(e) => setAdvRole(e.target.value as "" | Role)}
@@ -176,11 +196,13 @@ export function EmployeesPage() {
                     <Label>Phòng ban</Label>
                     <select
                       className={cn(
-                        "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                        "mt-1 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
                       )}
                       value={advDeptId === "" ? "" : String(advDeptId)}
                       onChange={(e) =>
-                        setAdvDeptId(e.target.value === "" ? "" : Number(e.target.value))
+                        setAdvDeptId(
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
                       }
                     >
                       <option value="">Tất cả</option>
@@ -199,7 +221,11 @@ export function EmployeesPage() {
                   onClick={() => {
                     setAdvRole("");
                     setAdvDeptId("");
-                    setApplied({ q: qInput.trim(), role: "", departmentId: undefined });
+                    setApplied({
+                      q: qInput.trim(),
+                      role: "",
+                      departmentId: undefined,
+                    });
                   }}
                 >
                   Xóa bộ lọc nâng cao
@@ -247,7 +273,10 @@ export function EmployeesPage() {
                       <CellWithTooltip text={u.departmentName ?? undefined} />
                     </TableCell>
                     <TableCell className="max-w-[240px]">
-                      <div className="flex flex-wrap gap-1" title={permissionTooltip(u)}>
+                      <div
+                        className="flex flex-wrap gap-1"
+                        title={permissionTooltip(u)}
+                      >
                         {permissionBadges(u)}
                       </div>
                     </TableCell>
@@ -265,10 +294,17 @@ export function EmployeesPage() {
                           <Eye className="h-3.5 w-3.5" />
                           Chi tiết
                         </Button>
-                        {isManager && !isAdmin && (
-                          <ManagerEditEmployeeDialog user={u} onDone={load} />
+                        {hasFeature(FeatureCodes.EMP_EDIT_DEPT) &&
+                          !hasFeature(FeatureCodes.EMP_EDIT_ALL) && (
+                            <ManagerEditEmployeeDialog user={u} onDone={load} />
+                          )}
+                        {hasFeature(FeatureCodes.EMP_EDIT_ALL) && (
+                          <EditUserDialog
+                            user={u}
+                            features={features}
+                            onDone={load}
+                          />
                         )}
-                        {isAdmin && <EditUserDialog user={u} features={features} onDone={load} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -279,7 +315,11 @@ export function EmployeesPage() {
         </CardContent>
       </Card>
 
-      <EmployeeDetailDialog user={detailUser} open={detailUser !== null} onOpenChange={(o) => !o && setDetailUser(null)} />
+      <EmployeeDetailDialog
+        user={detailUser}
+        open={detailUser !== null}
+        onOpenChange={(o) => !o && setDetailUser(null)}
+      />
     </div>
   );
 }
@@ -302,28 +342,46 @@ function EmployeeDetailDialog({
         </DialogHeader>
         <dl className="space-y-3 text-sm">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Mã NV</dt>
-            <dd className="mt-0.5 font-mono text-zinc-900">{user.employeeCode}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Mã NV
+            </dt>
+            <dd className="mt-0.5 font-mono text-zinc-900">
+              {user.employeeCode}
+            </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Họ tên</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Họ tên
+            </dt>
             <dd className="mt-0.5 text-zinc-900">{user.fullName}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Username</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Username
+            </dt>
             <dd className="mt-0.5 font-mono text-zinc-900">{user.username}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Vai trò</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Vai trò
+            </dt>
             <dd className="mt-0.5 text-zinc-900">{roleLabel(user.role)}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Phòng ban</dt>
-            <dd className="mt-0.5 text-zinc-900">{user.departmentName ?? "—"}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Phòng ban
+            </dt>
+            <dd className="mt-0.5 text-zinc-900">
+              {user.departmentName ?? "—"}
+            </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Chức năng đã cấp</dt>
-            <dd className="mt-1.5 flex flex-wrap gap-1">{permissionBadges(user)}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Chức năng đã cấp
+            </dt>
+            <dd className="mt-1.5 flex flex-wrap gap-1">
+              {permissionBadges(user)}
+            </dd>
           </div>
         </dl>
       </DialogContent>
@@ -331,7 +389,13 @@ function EmployeeDetailDialog({
   );
 }
 
-function ManagerEditEmployeeDialog({ user, onDone }: { user: User; onDone: () => void }) {
+function ManagerEditEmployeeDialog({
+  user,
+  onDone,
+}: {
+  user: User;
+  onDone: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
   const [saving, setSaving] = useState(false);
@@ -357,7 +421,11 @@ function ManagerEditEmployeeDialog({ user, onDone }: { user: User; onDone: () =>
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" onClick={(e) => e.stopPropagation()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Pencil className="h-3 w-3" />
           Sửa
         </Button>
@@ -369,9 +437,16 @@ function ManagerEditEmployeeDialog({ user, onDone }: { user: User; onDone: () =>
         <div className="space-y-3">
           <div>
             <Label>Họ tên</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
           </div>
-          <Button className="w-full" onClick={() => void save()} disabled={!fullName.trim() || saving}>
+          <Button
+            className="w-full"
+            onClick={() => void save()}
+            disabled={!fullName.trim() || saving}
+          >
             {saving && <Spinner />}
             Lưu
           </Button>
@@ -392,7 +467,9 @@ function EditUserDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(user.features));
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(user.features),
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -427,10 +504,16 @@ function EditUserDialog({
         toast.success("Đã cập nhật nhân viên");
       } else {
         const activeCodes = new Set(features.map((f) => f.code));
-        const featureCodes = [...selected].filter((code) => activeCodes.has(code));
-        const droppedInactive = [...selected].filter((code) => !activeCodes.has(code));
+        const featureCodes = [...selected].filter((code) =>
+          activeCodes.has(code),
+        );
+        const droppedInactive = [...selected].filter(
+          (code) => !activeCodes.has(code),
+        );
         if (droppedInactive.length > 0) {
-          toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi phân quyền.`);
+          toast.info(
+            `Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi phân quyền.`,
+          );
         }
         await api.patch(`/users/${user.id}`, {
           fullName: fullName.trim(),
@@ -450,7 +533,11 @@ function EditUserDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" onClick={(e) => e.stopPropagation()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Pencil className="h-3 w-3" />
           Phân quyền
         </Button>
@@ -462,21 +549,32 @@ function EditUserDialog({
         <p className="text-xs text-zinc-500">
           {user.role === "ADMIN" ? (
             <>
-              Quản trị viên có <strong>toàn quyền hệ thống</strong> theo code (không cần gán từng chức năng trong DB).
-              Chỉnh họ tên bên dưới nếu cần.
+              Quản trị viên có <strong>toàn quyền hệ thống</strong> theo code
+              (không cần gán từng chức năng trong DB). Chỉnh họ tên bên dưới nếu
+              cần.
             </>
           ) : (
-            <>Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ chỉ xem được dữ liệu.</>
+            <>
+              Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ
+              chỉ xem được dữ liệu.
+            </>
           )}
         </p>
         <div>
           <Label>Họ tên</Label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
+          <Input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="mt-1"
+          />
         </div>
         {user.role !== "ADMIN" && (
           <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
             {featureOptions.map((f) => (
-              <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
+              <label
+                key={f.code}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
                 <input
                   type="checkbox"
                   checked={selected.has(f.code)}
@@ -484,12 +582,18 @@ function EditUserDialog({
                   className="rounded border-zinc-300"
                 />
                 <span>{f.name}</span>
-                <span className="font-mono text-xs text-zinc-500">{f.code}</span>
+                <span className="font-mono text-xs text-zinc-500">
+                  {f.code}
+                </span>
               </label>
             ))}
           </div>
         )}
-        <Button className="w-full" onClick={() => void save()} disabled={!fullName.trim() || saving}>
+        <Button
+          className="w-full"
+          onClick={() => void save()}
+          disabled={!fullName.trim() || saving}
+        >
           {saving && <Spinner />}
           Lưu
         </Button>
@@ -562,24 +666,36 @@ function CreateUserDialog({
         <div className="space-y-3">
           <div>
             <Label>Họ tên</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
           </div>
           <div>
             <Label>Username</Label>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
           <div>
             <Label>Mật khẩu</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
           <div>
             <Label>Vai trò</Label>
             <select
               className={cn(
-                "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm"
+                "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
               )}
               value={role}
-              onChange={(e) => setRole(e.target.value as "EMPLOYEE" | "MANAGER")}
+              onChange={(e) =>
+                setRole(e.target.value as "EMPLOYEE" | "MANAGER")
+              }
             >
               <option value="EMPLOYEE">Nhân viên</option>
               <option value="MANAGER">Quản lý</option>
@@ -589,7 +705,10 @@ function CreateUserDialog({
             <Label>Quyền chức năng</Label>
             <div className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
               {features.map((f) => (
-                <label key={f.code} className="flex cursor-pointer items-center gap-2 text-sm">
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
                   <input
                     type="checkbox"
                     checked={selected.has(f.code)}
@@ -604,7 +723,9 @@ function CreateUserDialog({
           <Button
             className="w-full"
             onClick={() => void save()}
-            disabled={!fullName.trim() || !username.trim() || !password || saving}
+            disabled={
+              !fullName.trim() || !username.trim() || !password || saving
+            }
           >
             {saving && <Spinner />}
             Tạo

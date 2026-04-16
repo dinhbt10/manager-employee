@@ -1,6 +1,14 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
+import { FeatureCodes } from "@/api/types";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DepartmentsPage } from "@/pages/DepartmentsPage";
 import { EmployeesPage } from "@/pages/EmployeesPage";
@@ -17,9 +25,20 @@ function RequireAuth() {
   return <Outlet />;
 }
 
-function AdminRoute() {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) {
+function RequireEmployeeView() {
+  const { hasFeature } = useAuth();
+  if (
+    !hasFeature(FeatureCodes.EMP_VIEW_ALL) &&
+    !hasFeature(FeatureCodes.EMP_VIEW_DEPT)
+  ) {
+    return <Navigate to="/requests" replace />;
+  }
+  return <Outlet />;
+}
+
+function RequireAdminView() {
+  const { hasFeature } = useAuth();
+  if (!hasFeature(FeatureCodes.EMP_VIEW_ALL)) {
     return <Navigate to="/requests" replace />;
   }
   return <Outlet />;
@@ -33,8 +52,10 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/requests" replace />} />
           <Route path="/requests" element={<RequestsPage />} />
-          <Route path="/employees" element={<EmployeesPage />} />
-          <Route element={<AdminRoute />}>
+          <Route element={<RequireEmployeeView />}>
+            <Route path="/employees" element={<EmployeesPage />} />
+          </Route>
+          <Route element={<RequireAdminView />}>
             <Route path="/departments" element={<DepartmentsPage />} />
             <Route path="/features" element={<FeaturesPage />} />
           </Route>
@@ -56,7 +77,8 @@ export default function App() {
           theme="light"
           toastOptions={{
             classNames: {
-              toast: "border border-zinc-200 bg-white/95 text-zinc-900 shadow-lg shadow-zinc-300/40 backdrop-blur-sm",
+              toast:
+                "border border-zinc-200 bg-white/95 text-zinc-900 shadow-lg shadow-zinc-300/40 backdrop-blur-sm",
             },
           }}
         />

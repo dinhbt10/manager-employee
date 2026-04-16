@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, getToken, setToken } from "@/api/client";
-import type { LoginResponse, Role } from "@/api/types";
+import type { LoginResponse, Role, FeatureCode } from "@/api/types";
 
 const USER_KEY = "emp_user";
 
@@ -23,6 +23,7 @@ type AuthContextValue = AuthState & {
   isAdmin: boolean;
   isManager: boolean;
   canSeeDepartments: boolean;
+  hasFeature: (code: FeatureCode) => boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,7 +40,9 @@ function loadStoredUser(): LoginResponse | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTok] = useState<string | null>(() => getToken());
-  const [user, setUser] = useState<LoginResponse | null>(() => loadStoredUser());
+  const [user, setUser] = useState<LoginResponse | null>(() =>
+    loadStoredUser(),
+  );
 
   const logout = useCallback(() => {
     setToken(null);
@@ -54,8 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("auth:logout", onLogout);
   }, [logout]);
 
+  // Fetch fresh user data on mount if token exists
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) return;
+      try {
+        const { data } = await api.get<LoginResponse>("/auth/me");
+        setUser(data);
+        localStorage.setItem(USER_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+        // If 401, logout
+        if ((error as any).response?.status === 401) {
+          logout();
+        }
+      }
+    };
+
+    fetchUser();
+  }, [token, logout]);
+
   const login = useCallback(async (username: string, password: string) => {
-    const { data } = await api.post<LoginResponse>("/auth/login", { username, password });
+    const { data } = await api.post<LoginResponse>("/auth/login", {
+      username,
+      password,
+    });
     setToken(data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data));
     setTok(data.token);
@@ -66,6 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isManager = user?.role === "MANAGER";
   const canSeeDepartments = isAdmin;
 
+  const hasFeature = useCallback(
+    (code: FeatureCode): boolean => {
+      return user?.features.includes(code) ?? false;
+    },
+    [user?.features],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
@@ -75,8 +108,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isManager,
       canSeeDepartments,
+      hasFeature,
     }),
-    [token, user, login, logout, isAdmin, isManager, canSeeDepartments]
+    [
+      token,
+      user,
+      login,
+      logout,
+      isAdmin,
+      isManager,
+      canSeeDepartments,
+      hasFeature,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

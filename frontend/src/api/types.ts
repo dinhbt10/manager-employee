@@ -1,5 +1,18 @@
 export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
+export const FeatureCodes = {
+  EMP_CREATE: "EMP_CREATE",
+  EMP_EDIT_ALL: "EMP_EDIT_ALL",
+  EMP_VIEW_ALL: "EMP_VIEW_ALL",
+  EMP_EXPORT: "EMP_EXPORT",
+  REQ_APPROVE_ALL: "REQ_APPROVE_ALL",
+  EMP_EDIT_DEPT: "EMP_EDIT_DEPT",
+  EMP_VIEW_DEPT: "EMP_VIEW_DEPT",
+  REQ_APPROVE_DEPT: "REQ_APPROVE_DEPT",
+} as const;
+
+export type FeatureCode = (typeof FeatureCodes)[keyof typeof FeatureCodes];
+
 export interface LoginResponse {
   token: string;
   /** Có từ API login; bản lưu cũ có thể thiếu — cần đăng nhập lại. */
