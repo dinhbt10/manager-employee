@@ -36,12 +36,19 @@ function RequireEmployeeView() {
   return <Outlet />;
 }
 
-function RequireAdminView() {
+/** Phòng ban: xem danh sách — DEPT_VIEW (Admin luôn được qua hasFeature). */
+function RequireDeptView() {
   const { hasFeature } = useAuth();
-  if (
-    !hasFeature(FeatureCodes.DEPT_VIEW) &&
-    !hasFeature(FeatureCodes.FEATURE_VIEW)
-  ) {
+  if (!hasFeature(FeatureCodes.DEPT_VIEW)) {
+    return <Navigate to="/requests" replace />;
+  }
+  return <Outlet />;
+}
+
+/** Danh mục chức năng — FEATURE_VIEW. */
+function RequireFeatureCatalogView() {
+  const { hasFeature } = useAuth();
+  if (!hasFeature(FeatureCodes.FEATURE_VIEW)) {
     return <Navigate to="/requests" replace />;
   }
   return <Outlet />;
@@ -58,8 +65,10 @@ function AppRoutes() {
           <Route element={<RequireEmployeeView />}>
             <Route path="/employees" element={<EmployeesPage />} />
           </Route>
-          <Route element={<RequireAdminView />}>
+          <Route element={<RequireDeptView />}>
             <Route path="/departments" element={<DepartmentsPage />} />
+          </Route>
+          <Route element={<RequireFeatureCatalogView />}>
             <Route path="/features" element={<FeaturesPage />} />
           </Route>
         </Route>

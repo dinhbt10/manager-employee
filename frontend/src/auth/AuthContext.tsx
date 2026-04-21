@@ -102,9 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasFeature = useCallback(
     (code: FeatureCode): boolean => {
+      if (user?.role === "ADMIN") return true;
       return user?.features.includes(code) ?? false;
     },
-    [user?.features],
+    [user?.features, user?.role],
   );
 
   const value = useMemo<AuthContextValue>(

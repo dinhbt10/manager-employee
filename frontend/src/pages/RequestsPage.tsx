@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
 import type {
@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
 import { Check, Eye, Pencil, Plus, Send, Trash2, XCircle } from "lucide-react";
@@ -132,13 +132,33 @@ type ReqApplied = {
   featureCode: string;
 };
 
+function buildRequestParams(
+  tab: "draft" | "pending" | "approved",
+  applied: ReqApplied,
+): Record<string, string | number | string[] | undefined> {
+  const params: Record<string, string | number | string[] | undefined> = {
+    status: TAB_STATUS_PARAMS[tab],
+  };
+  if (applied.q.trim()) params.q = applied.q.trim();
+  if (applied.departmentId != null) params.departmentId = applied.departmentId;
+  if (applied.requesterId != null) params.requesterId = applied.requesterId;
+  if (applied.targetUserId != null) params.targetUserId = applied.targetUserId;
+  if (applied.createdFrom)
+    params.createdFrom = new Date(applied.createdFrom).toISOString();
+  if (applied.createdTo)
+    params.createdTo = new Date(applied.createdTo).toISOString();
+  if (applied.featureCode.trim()) params.featureCode = applied.featureCode.trim();
+  return params;
+}
+
 export function RequestsPage() {
   const { user, hasFeature } = useAuth();
   const [rows, setRows] = useState<PermissionRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"draft" | "pending" | "approved">("pending");
   const [qInput, setQInput] = useState("");
   const [advOpen, setAdvOpen] = useState(false);
@@ -155,43 +175,69 @@ export function RequestsPage() {
     featureCode: "",
   });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number | string[] | undefined> = {
-        status: TAB_STATUS_PARAMS[tab],
-      };
-      if (applied.q.trim()) params.q = applied.q.trim();
-      if (applied.departmentId != null)
-        params.departmentId = applied.departmentId;
-      if (applied.requesterId != null) params.requesterId = applied.requesterId;
-      if (applied.targetUserId != null)
-        params.targetUserId = applied.targetUserId;
-      if (applied.createdFrom)
-        params.createdFrom = new Date(applied.createdFrom).toISOString();
-      if (applied.createdTo)
-        params.createdTo = new Date(applied.createdTo).toISOString();
-      if (applied.featureCode.trim())
-        params.featureCode = applied.featureCode.trim();
+  const loadKey = useMemo(
+    () =>
+      `${tab}:${applied.q}:${applied.departmentId ?? ""}:${applied.requesterId ?? ""}:${applied.targetUserId ?? ""}:${applied.createdFrom}:${applied.createdTo}:${applied.featureCode}`,
+    [tab, applied],
+  );
 
+  const loadKeyRef = useRef(loadKey);
+  loadKeyRef.current = loadKey;
+
+  useEffect(() => {
+    const key = loadKey;
+    let cancelled = false;
+    async function run() {
+      try {
+        const params = buildRequestParams(tab, applied);
+        const [r, u, f] = await Promise.all([
+          api.get<PermissionRequest[]>("/requests", { params }),
+          api.get<User[]>("/users"),
+          api.get<FeatureOption[]>("/features"),
+        ]);
+        if (cancelled) return;
+        if (key !== loadKeyRef.current) return;
+        setRows(r.data);
+        setUsers(u.data);
+        setFeatures(f.data);
+        setLoadedKey(loadKeyRef.current);
+      } catch (e) {
+        if (key !== loadKeyRef.current) return;
+        toast.error(getApiErrorMessage(e, "Không tải được dữ liệu request"));
+        setRows([]);
+        setLoadedKey(loadKeyRef.current);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadKey, tab, applied]);
+
+  const refreshList = useCallback(async () => {
+    setRefreshing(true);
+    const key = loadKey;
+    try {
+      const params = buildRequestParams(tab, applied);
       const [r, u, f] = await Promise.all([
         api.get<PermissionRequest[]>("/requests", { params }),
         api.get<User[]>("/users"),
         api.get<FeatureOption[]>("/features"),
       ]);
+      if (key !== loadKeyRef.current) return;
       setRows(r.data);
       setUsers(u.data);
       setFeatures(f.data);
     } catch (e) {
-      toast.error(getApiErrorMessage(e, "Không tải được dữ liệu request"));
+      if (key === loadKeyRef.current) {
+        toast.error(getApiErrorMessage(e, "Không tải được dữ liệu request"));
+      }
     } finally {
-      setLoading(false);
+      if (key === loadKeyRef.current) setRefreshing(false);
     }
-  }, [tab, applied]);
+  }, [loadKey, tab, applied]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const listLoading = loadedKey !== loadKey;
 
   useEffect(() => {
     if (user?.role !== "ADMIN") return;
@@ -242,7 +288,7 @@ export function RequestsPage() {
           <CreateRequestDialog
             users={users}
             features={features}
-            onCreated={load}
+            onCreated={refreshList}
           />
         }
       />
@@ -406,49 +452,30 @@ export function RequestsPage() {
             className="px-6"
           >
             <TabsList className="grid h-11 w-full max-w-xl grid-cols-3 gap-1 p-1">
-              <TabsTrigger value="draft">Đang soạn</TabsTrigger>
-              <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
-              <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
+              <TabsTrigger value="draft" className="transition-colors duration-150">
+                Đang soạn
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="transition-colors duration-150">
+                Chờ duyệt
+              </TabsTrigger>
+              <TabsTrigger value="approved" className="transition-colors duration-150">
+                Đã duyệt
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="draft" className="mt-4">
+            <div className="mt-4 pb-6">
               <RequestTable
-                loading={loading}
+                loading={listLoading}
+                refreshing={refreshing}
                 rows={rows}
-                mode="draft"
+                mode={tab}
                 user={user}
                 users={users}
                 features={features}
-                onAction={load}
+                onAction={refreshList}
                 emptyMessage={emptyHint}
                 hasFeature={hasFeature}
               />
-            </TabsContent>
-            <TabsContent value="pending" className="mt-4">
-              <RequestTable
-                loading={loading}
-                rows={rows}
-                mode="pending"
-                user={user}
-                users={users}
-                features={features}
-                onAction={load}
-                emptyMessage={emptyHint}
-                hasFeature={hasFeature}
-              />
-            </TabsContent>
-            <TabsContent value="approved" className="mt-4">
-              <RequestTable
-                loading={loading}
-                rows={rows}
-                mode="approved"
-                user={user}
-                users={users}
-                features={features}
-                onAction={load}
-                emptyMessage={emptyHint}
-                hasFeature={hasFeature}
-              />
-            </TabsContent>
+            </div>
           </Tabs>
         </CardContent>
       </Card>
@@ -458,6 +485,7 @@ export function RequestsPage() {
 
 type TableProps = {
   loading: boolean;
+  refreshing: boolean;
   rows: PermissionRequest[];
   mode: "draft" | "pending" | "approved";
   user: LoginResponse | null;
@@ -470,6 +498,7 @@ type TableProps = {
 
 function RequestTable({
   loading,
+  refreshing,
   rows,
   mode,
   user,
@@ -538,19 +567,39 @@ function RequestTable({
   }
 
   if (loading) {
-    return <TableSkeleton rows={6} columns={5} />;
+    return (
+      <div className="min-h-[min(55vh,26rem)] transition-opacity duration-200">
+        <TableSkeleton rows={6} columns={5} />
+      </div>
+    );
   }
   if (rows.length === 0) {
     return (
-      <p className="px-6 pb-8 text-center text-sm text-zinc-500">
-        {emptyMessage}
-      </p>
+      <div className="relative min-h-[min(55vh,26rem)] transition-opacity duration-200">
+        {refreshing && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/55 backdrop-blur-[1px]">
+            <Spinner className="text-brand-600" />
+          </div>
+        )}
+        <p className="px-2 pb-8 pt-4 text-center text-sm text-zinc-500">
+          {emptyMessage}
+        </p>
+      </div>
     );
   }
 
   return (
-    <>
-      <Table>
+    <div className="relative min-h-[min(55vh,26rem)] transition-opacity duration-200">
+      {refreshing && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/50 backdrop-blur-[1px]"
+          aria-busy
+          aria-label="Đang cập nhật"
+        >
+          <Spinner className="text-brand-600" />
+        </div>
+      )}
+      <Table className={cn(refreshing && "opacity-60")}>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Mã</TableHead>
@@ -752,7 +801,7 @@ function RequestTable({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
 

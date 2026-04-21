@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { FeatureAdmin } from "@/api/types";
+import { FeatureCodes } from "@/api/types";
+import { useAuth } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ListSearchBar } from "@/components/ListSearchBar";
@@ -26,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Eye, Layers, Pencil, Plus } from "lucide-react";
 
 export function FeaturesPage() {
+  const { hasFeature } = useAuth();
   const [rows, setRows] = useState<FeatureAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [qInput, setQInput] = useState("");
@@ -68,7 +71,11 @@ export function FeaturesPage() {
       <PageHeader
         title="Chức năng (mã)"
         description="Danh mục mã chức năng dùng cho phân quyền và request — chỉ Admin. Mã không đổi sau khi tạo; có thể đổi tên hiển thị và ngưng hoạt động."
-        actions={<CreateFeatureDialog onDone={load} />}
+        actions={
+          hasFeature(FeatureCodes.FEATURE_CREATE) ? (
+            <CreateFeatureDialog onDone={load} />
+          ) : null
+        }
       />
       <Card>
         <CardContent className="space-y-0 p-0 pt-6">
@@ -138,7 +145,9 @@ export function FeaturesPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
                         <FeatureDetailDialog feature={f} />
-                        <EditFeatureDialog feature={f} onDone={load} />
+                        {hasFeature(FeatureCodes.FEATURE_EDIT) && (
+                          <EditFeatureDialog feature={f} onDone={load} />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

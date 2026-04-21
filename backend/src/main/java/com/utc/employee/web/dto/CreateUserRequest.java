@@ -11,7 +11,7 @@ public record CreateUserRequest(
         @NotBlank String username,
         @NotBlank String password,
         @NotNull Role role,
-        Long departmentId,
+        @NotNull Long departmentId,
         Set<String> featureCodes
 ) {
 }

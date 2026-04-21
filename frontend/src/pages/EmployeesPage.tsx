@@ -37,7 +37,7 @@ import { Eye, Pencil, UserPlus } from "lucide-react";
  * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
  * Chỉ EMPLOYEE (và trường hợp có gán thêm) mới hiển thị đúng danh sách mã trong `user_features`.
  */
-function permissionBadges(user: User) {
+function permissionBadges(user: User, labelByCode: Map<string, string>) {
   if (user.role === "ADMIN") {
     return (
       <Badge
@@ -64,20 +64,21 @@ function permissionBadges(user: User) {
     );
   }
   return user.features.map((c) => (
-    <Badge key={c} variant="secondary" className="font-mono text-[10px]">
-      {c}
+    <Badge key={c} variant="secondary" className="text-xs">
+      {labelByCode.get(c) ?? c}
     </Badge>
   ));
 }
 
-function permissionTooltip(user: User): string {
+function permissionTooltip(user: User, labelByCode: Map<string, string>): string {
   if (user.role === "ADMIN") {
     return "Quản trị viên — toàn quyền (không cần gán từng chức năng trong DB)";
   }
   if (user.role === "MANAGER" && user.features.length === 0) {
     return "Quản lý — đủ quyền với nhân viên thuộc phòng ban của mình";
   }
-  return user.features.join(", ") || "Chỉ xem (chưa cấp chức năng)";
+  const labels = user.features.map((c) => labelByCode.get(c) ?? c);
+  return labels.join(", ") || "Chỉ xem (chưa cấp chức năng)";
 }
 
 export function EmployeesPage() {
@@ -100,6 +101,12 @@ export function EmployeesPage() {
     q: "",
     role: "",
   });
+
+  const featureLabelByCode = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of features) m.set(f.code, f.name);
+    return m;
+  }, [features]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,12 +135,12 @@ export function EmployeesPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!hasFeature(FeatureCodes.EMP_CREATE)) return;
     void api
       .get<Department[]>("/departments")
       .then((r) => setDepartments(r.data))
       .catch(() => {});
-  }, [isAdmin]);
+  }, [hasFeature]);
 
   function applyQuickSearch() {
     setApplied((prev) => ({ ...prev, q: qInput.trim() }));
@@ -154,7 +161,11 @@ export function EmployeesPage() {
         description="Danh sách theo phân quyền: Admin toàn hệ thống; Quản lý theo phòng; NV chỉ thấy hồ sơ của mình."
         actions={
           hasFeature(FeatureCodes.EMP_CREATE) ? (
-            <CreateUserDialog features={features} onDone={load} />
+            <CreateUserDialog
+              departments={departments}
+              features={features}
+              onDone={load}
+            />
           ) : null
         }
       />
@@ -275,9 +286,9 @@ export function EmployeesPage() {
                     <TableCell className="max-w-[240px]">
                       <div
                         className="flex flex-wrap gap-1"
-                        title={permissionTooltip(u)}
+                        title={permissionTooltip(u, featureLabelByCode)}
                       >
-                        {permissionBadges(u)}
+                        {permissionBadges(u, featureLabelByCode)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -319,6 +330,7 @@ export function EmployeesPage() {
         user={detailUser}
         open={detailUser !== null}
         onOpenChange={(o) => !o && setDetailUser(null)}
+        featureLabelByCode={featureLabelByCode}
       />
     </div>
   );
@@ -328,10 +340,12 @@ function EmployeeDetailDialog({
   user,
   open,
   onOpenChange,
+  featureLabelByCode,
 }: {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  featureLabelByCode: Map<string, string>;
 }) {
   if (!user) return null;
   return (
@@ -380,7 +394,7 @@ function EmployeeDetailDialog({
               Chức năng đã cấp
             </dt>
             <dd className="mt-1.5 flex flex-wrap gap-1">
-              {permissionBadges(user)}
+              {permissionBadges(user, featureLabelByCode)}
             </dd>
           </div>
         </dl>
@@ -603,9 +617,11 @@ function EditUserDialog({
 }
 
 function CreateUserDialog({
+  departments,
   features,
   onDone,
 }: {
+  departments: Department[];
   features: FeatureOption[];
   onDone: () => void;
 }) {
@@ -614,6 +630,7 @@ function CreateUserDialog({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"EMPLOYEE" | "MANAGER">("EMPLOYEE");
+  const [departmentId, setDepartmentId] = useState<number | "">("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -634,7 +651,7 @@ function CreateUserDialog({
         username: username.trim(),
         password,
         role,
-        departmentId: null,
+        departmentId,
         featureCodes: [...selected],
       });
       toast.success("Đã tạo nhân viên mới");
@@ -642,6 +659,7 @@ function CreateUserDialog({
       setFullName("");
       setUsername("");
       setPassword("");
+      setDepartmentId("");
       setSelected(new Set());
       onDone();
     } catch (e) {
@@ -652,7 +670,20 @@ function CreateUserDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setFullName("");
+          setUsername("");
+          setPassword("");
+          setRole("EMPLOYEE");
+          setDepartmentId("");
+          setSelected(new Set());
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="h-4 w-4" />
@@ -702,6 +733,33 @@ function CreateUserDialog({
             </select>
           </div>
           <div>
+            <Label>Phòng ban</Label>
+            <select
+              className={cn(
+                "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
+              )}
+              value={departmentId === "" ? "" : String(departmentId)}
+              onChange={(e) =>
+                setDepartmentId(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
+              }
+              required
+            >
+              <option value="">— Chọn phòng ban —</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            {departments.length === 0 && (
+              <p className="mt-1 text-xs text-amber-700">
+                Chưa có phòng ban trong hệ thống. Hãy tạo phòng ban trước.
+              </p>
+            )}
+          </div>
+          <div>
             <Label>Quyền chức năng</Label>
             <div className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
               {features.map((f) => (
@@ -724,7 +782,11 @@ function CreateUserDialog({
             className="w-full"
             onClick={() => void save()}
             disabled={
-              !fullName.trim() || !username.trim() || !password || saving
+              !fullName.trim() ||
+              !username.trim() ||
+              !password ||
+              departmentId === "" ||
+              saving
             }
           >
             {saving && <Spinner />}

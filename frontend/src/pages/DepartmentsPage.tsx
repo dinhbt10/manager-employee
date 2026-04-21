@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { Department } from "@/api/types";
+import { FeatureCodes } from "@/api/types";
+import { useAuth } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ListSearchBar } from "@/components/ListSearchBar";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -25,6 +27,7 @@ import { Building2, Eye, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DepartmentsPage() {
+  const { hasFeature } = useAuth();
   const [rows, setRows] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [qInput, setQInput] = useState("");
@@ -67,7 +70,11 @@ export function DepartmentsPage() {
       <PageHeader
         title="Phòng ban"
         description="Quản lý danh mục phòng ban — tạo mới, cập nhật tên và trạng thái hoạt động."
-        actions={<CreateDepartmentDialog onDone={load} />}
+        actions={
+          hasFeature(FeatureCodes.DEPT_CREATE) ? (
+            <CreateDepartmentDialog onDone={load} />
+          ) : null
+        }
       />
       <Card>
         <CardContent className="space-y-0 p-0 pt-6">
@@ -137,7 +144,9 @@ export function DepartmentsPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
                         <DepartmentDetailDialog department={d} />
-                        <EditDepartmentDialog department={d} onDone={load} />
+                        {hasFeature(FeatureCodes.DEPT_EDIT) && (
+                          <EditDepartmentDialog department={d} onDone={load} />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

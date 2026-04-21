@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 
 export function LoginPage() {
   const { login, token } = useAuth();
@@ -18,6 +18,7 @@ export function LoginPage() {
 
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (token) {
@@ -69,14 +70,30 @@ export function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="p">Mật khẩu</Label>
-              <Input
-                id="p"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11"
-              />
+              <div className="relative">
+                <Input
+                  id="p"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 pr-11"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-11 w-11 shrink-0 text-zinc-500 hover:text-zinc-800"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden />
+                  )}
+                </Button>
+              </div>
             </div>
             <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
               {loading ? (

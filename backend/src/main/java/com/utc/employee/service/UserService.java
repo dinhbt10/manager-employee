@@ -123,9 +123,7 @@ public class UserService {
         u.setFullName(req.fullName().trim());
         u.setEmployeeCode("NV" + String.format("%04d", seq));
         u.setRole(req.role());
-        if (req.departmentId() != null) {
-            u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
-        }
+        u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
         if (req.featureCodes() != null && !req.featureCodes().isEmpty()) {
             u.setFeatures(resolveFeatures(req.featureCodes()));
         }
