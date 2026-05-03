@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { Eye, Pencil, UserPlus } from "lucide-react";
+import { Eye, Pencil, UserPlus, Download } from "lucide-react";
 
 /**
  * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
@@ -88,6 +88,7 @@ export function EmployeesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailUser, setDetailUser] = useState<User | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const [qInput, setQInput] = useState("");
   const [advOpen, setAdvOpen] = useState(false);
@@ -154,19 +155,67 @@ export function EmployeesPage() {
     });
   }
 
+  async function exportToExcel() {
+    if (!hasFeature(FeatureCodes.EMP_EXPORT)) {
+      toast.error("Không có quyền xuất Excel");
+      return;
+    }
+    
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (applied.q.trim()) params.append("q", applied.q.trim());
+      if (applied.role) params.append("role", applied.role);
+      if (applied.departmentId != null) params.append("departmentId", String(applied.departmentId));
+
+      const response = await api.get("/users/export", {
+        params,
+        responseType: "blob",
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "danh-sach-nhan-vien.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Đã xuất file Excel thành công");
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, "Không thể xuất Excel"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="animate-fade-in-up">
       <PageHeader
         title="Nhân viên"
         description="Danh sách theo phân quyền: Admin toàn hệ thống; Quản lý theo phòng; NV chỉ thấy hồ sơ của mình."
         actions={
-          hasFeature(FeatureCodes.EMP_CREATE) ? (
-            <CreateUserDialog
-              departments={departments}
-              features={features}
-              onDone={load}
-            />
-          ) : null
+          <div className="flex gap-2">
+            {hasFeature(FeatureCodes.EMP_EXPORT) && (
+              <Button
+                variant="secondary"
+                onClick={() => void exportToExcel()}
+                disabled={exporting}
+              >
+                {exporting ? <Spinner /> : <Download className="h-4 w-4" />}
+                Xuất Excel
+              </Button>
+            )}
+            {hasFeature(FeatureCodes.EMP_CREATE) && (
+              <CreateUserDialog
+                departments={departments}
+                features={features}
+                onDone={load}
+              />
+            )}
+          </div>
         }
       />
       <Card>

@@ -4,9 +4,11 @@ import com.utc.employee.service.UserService;
 import com.utc.employee.web.dto.CreateUserRequest;
 import com.utc.employee.web.dto.UpdateUserRequest;
 import com.utc.employee.web.dto.UserDto;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -43,5 +45,15 @@ public class UserController {
     @PatchMapping("/{id}")
     public UserDto update(@PathVariable Long id, @RequestBody UpdateUserRequest req) {
         return userService.update(currentUser.get(), id, req);
+    }
+
+    @GetMapping("/export")
+    public void exportExcel(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Long departmentId,
+            HttpServletResponse response
+    ) throws IOException {
+        userService.exportToExcel(currentUser.get(), q, role, departmentId, response);
     }
 }

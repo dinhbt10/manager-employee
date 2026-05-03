@@ -47,6 +47,7 @@ export function AppLayout() {
     (user?.role === "MANAGER" && user?.departmentId != null) ||
     hasFeature(FeatureCodes.DEPT_VIEW);
   const canSeeFeatures = hasFeature(FeatureCodes.FEATURE_VIEW);
+  const canExportEmployees = hasFeature(FeatureCodes.EMP_EXPORT);
 
   return (
     <div className="flex min-h-screen">

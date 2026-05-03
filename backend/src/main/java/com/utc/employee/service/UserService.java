@@ -12,10 +12,14 @@ import com.utc.employee.web.ForbiddenException;
 import com.utc.employee.web.dto.CreateUserRequest;
 import com.utc.employee.web.dto.UpdateUserRequest;
 import com.utc.employee.web.dto.UserDto;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -126,8 +130,12 @@ public class UserService {
         u.setRole(req.role());
         u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
         
-        // Gán quyền mặc định theo role
-        u.setFeatures(getDefaultFeaturesForRole(req.role()));
+        // Gán quyền: mặc định theo role + quyền được chọn thêm từ UI
+        Set<Feature> features = getDefaultFeaturesForRole(req.role());
+        if (req.featureCodes() != null && !req.featureCodes().isEmpty()) {
+            features.addAll(resolveFeatures(req.featureCodes()));
+        }
+        u.setFeatures(features);
         
         return toDto(userAccountRepository.save(u), current);
     }
@@ -230,5 +238,77 @@ public class UserService {
                 codes,
                 readOnly
         );
+    }
+
+    @Transactional(readOnly = true)
+    public void exportToExcel(AuthUser current, String q, String role, Long departmentId, HttpServletResponse response) throws IOException {
+        // Kiểm tra quyền export
+        if (!accessPolicy.hasFeature(current, FeatureCodes.EMP_EXPORT)) {
+            throw new ForbiddenException("Không có quyền xuất Excel");
+        }
+
+        // Lấy danh sách nhân viên
+        List<UserDto> users = list(current, q, role, departmentId);
+
+        // Tạo workbook
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Danh sách nhân viên");
+
+            // Tạo header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+
+            // Tạo header row
+            Row headerRow = sheet.createRow(0);
+            String[] columns = {"Mã NV", "Họ tên", "Username", "Vai trò", "Phòng ban", "Quyền"};
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Tạo data rows
+            int rowNum = 1;
+            for (UserDto user : users) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(user.employeeCode());
+                row.createCell(1).setCellValue(user.fullName());
+                row.createCell(2).setCellValue(user.username());
+                row.createCell(3).setCellValue(getRoleLabel(user.role()));
+                row.createCell(4).setCellValue(user.departmentName() != null ? user.departmentName() : "");
+                row.createCell(5).setCellValue(String.join(", ", user.features()));
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Set response headers
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=danh-sach-nhan-vien.xlsx");
+
+            // Write to response
+            workbook.write(response.getOutputStream());
+        }
+    }
+
+    private String getRoleLabel(String role) {
+        return switch (role) {
+            case "ADMIN" -> "Quản trị viên";
+            case "MANAGER" -> "Quản lý";
+            case "EMPLOYEE" -> "Nhân viên";
+            default -> role;
+        };
     }
 }
