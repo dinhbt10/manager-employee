@@ -63,6 +63,11 @@ public class PermissionRequestController {
         return permissionRequestService.update(currentUser.get(), id, body);
     }
 
+    @PostMapping("/{id}/save-draft")
+    public PermissionRequestDto saveDraft(@PathVariable Long id, @Valid @RequestBody CreatePermissionRequestBody body) {
+        return permissionRequestService.saveDraft(currentUser.get(), id, body);
+    }
+
     @PostMapping("/{id}/submit")
     public PermissionRequestDto submit(@PathVariable Long id) {
         return permissionRequestService.submit(currentUser.get(), id);

@@ -40,7 +40,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { Check, Eye, Pencil, Plus, Send, Trash2, XCircle } from "lucide-react";
+import { Check, Eye, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 
 function statusVariant(
   s: string,
@@ -541,16 +541,6 @@ function RequestTable({
     null,
   );
 
-  async function submit(id: number) {
-    try {
-      await api.post(`/requests/${id}/submit`);
-      toast.success("Đã gửi duyệt");
-      onAction();
-    } catch (e) {
-      toast.error(getApiErrorMessage(e));
-    }
-  }
-
   async function approve(id: number) {
     try {
       await api.post(`/requests/${id}/approve`);
@@ -695,19 +685,6 @@ function RequestTable({
                             onDone={onAction}
                           />
                         </span>
-                      )}
-                      {canEditRequest(user, r) && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void submit(r.id);
-                          }}
-                        >
-                          <Send className="h-3 w-3" />
-                          Gửi duyệt
-                        </Button>
                       )}
                       {canDeleteRequest(user, r) && (
                         <Button
@@ -1022,6 +999,7 @@ function EditRequestDialog({
 }) {
   const { user: authUser } = useAuth();
   const isEmployee = authUser?.role === "EMPLOYEE";
+  const canAutoApprove = authUser?.role === "ADMIN" || authUser?.role === "MANAGER";
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(request.title);
   const [description, setDescription] = useState(request.description ?? "");
@@ -1032,6 +1010,7 @@ function EditRequestDialog({
     () => new Set(request.requestedFeatureCodes),
   );
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setTitle(request.title);
@@ -1059,8 +1038,10 @@ function EditRequestDialog({
     });
   }
 
-  async function save() {
-    if (!title.trim() || selected.size === 0) return;
+  const isFormValid = title.trim() && selected.size > 0;
+
+  async function saveDraft() {
+    if (!isFormValid) return;
     setSaving(true);
     try {
       const activeCodes = new Set(features.map((f) => f.code));
@@ -1078,15 +1059,14 @@ function EditRequestDialog({
         setSaving(false);
         return;
       }
-      await api.patch(`/requests/${request.id}`, {
+      await api.post(`/requests/${request.id}/save-draft`, {
         title: title.trim(),
         description: description.trim() || null,
         targetUserId,
         requestedFeatureCodes,
       });
-      toast.success("Đã cập nhật request");
+      toast.success("Đã lưu nháp");
       setOpen(false);
-      // Clear form sau khi save thành công
       setTitle(request.title);
       setDescription(request.description ?? "");
       setTargetUserId(request.targetUserId);
@@ -1096,6 +1076,52 @@ function EditRequestDialog({
       toast.error(getApiErrorMessage(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitForApproval() {
+    if (!isFormValid) return;
+    setSubmitting(true);
+    try {
+      const activeCodes = new Set(features.map((f) => f.code));
+      const requestedFeatureCodes = [...selected].filter((code) =>
+        activeCodes.has(code),
+      );
+      const droppedInactive = [...selected].filter(
+        (code) => !activeCodes.has(code),
+      );
+      if (droppedInactive.length > 0) {
+        toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi request.`);
+      }
+      if (requestedFeatureCodes.length === 0) {
+        toast.error("Cần ít nhất một chức năng đang hoạt động.");
+        setSubmitting(false);
+        return;
+      }
+      // Cập nhật trước
+      await api.patch(`/requests/${request.id}`, {
+        title: title.trim(),
+        description: description.trim() || null,
+        targetUserId,
+        requestedFeatureCodes,
+      });
+      // Sau đó gửi duyệt
+      await api.post(`/requests/${request.id}/submit`);
+      if (canAutoApprove) {
+        toast.success("Đã phê duyệt request");
+      } else {
+        toast.success("Đã gửi duyệt");
+      }
+      setOpen(false);
+      setTitle(request.title);
+      setDescription(request.description ?? "");
+      setTargetUserId(request.targetUserId);
+      setSelected(new Set(request.requestedFeatureCodes));
+      onDone();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -1188,14 +1214,25 @@ function EditRequestDialog({
               ))}
             </div>
           </div>
-          <Button
-            className="w-full"
-            onClick={() => void save()}
-            disabled={!title.trim() || selected.size === 0 || saving}
-          >
-            {saving && <Spinner />}
-            Lưu thay đổi
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant="secondary"
+              onClick={() => void saveDraft()}
+              disabled={!isFormValid || saving}
+            >
+              {saving && <Spinner />}
+              Lưu nháp
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => void submitForApproval()}
+              disabled={!isFormValid || submitting}
+            >
+              {submitting && <Spinner />}
+              Gửi duyệt
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -1218,8 +1255,10 @@ function CreateRequestDialog({
   const [targetUserId, setTargetUserId] = useState<number | "">("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const isEmployee = authUser?.role === "EMPLOYEE";
+  const canAutoApprove = authUser?.role === "ADMIN" || authUser?.role === "MANAGER";
 
   useEffect(() => {
     if (!open || !isEmployee) return;
@@ -1238,8 +1277,10 @@ function CreateRequestDialog({
     });
   }
 
-  async function create() {
-    if (!title.trim() || targetUserId === "" || selected.size === 0) return;
+  const isFormValid = title.trim() && targetUserId !== "" && selected.size > 0;
+
+  async function createDraft() {
+    if (!isFormValid) return;
     setSaving(true);
     try {
       await api.post("/requests", {
@@ -1250,11 +1291,45 @@ function CreateRequestDialog({
       });
       toast.success("Đã tạo request (nháp)");
       setOpen(false);
+      setTitle("");
+      setDescription("");
+      setTargetUserId("");
+      setSelected(new Set());
       onCreated();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function createAndSubmit() {
+    if (!isFormValid) return;
+    setSubmitting(true);
+    try {
+      const response = await api.post<PermissionRequest>("/requests", {
+        title: title.trim(),
+        description: description.trim() || null,
+        targetUserId,
+        requestedFeatureCodes: [...selected],
+      });
+      // Gửi duyệt ngay
+      await api.post(`/requests/${response.data.id}/submit`);
+      if (canAutoApprove) {
+        toast.success("Đã tạo và phê duyệt request");
+      } else {
+        toast.success("Đã tạo và gửi duyệt request");
+      }
+      setOpen(false);
+      setTitle("");
+      setDescription("");
+      setTargetUserId("");
+      setSelected(new Set());
+      onCreated();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -1346,19 +1421,25 @@ function CreateRequestDialog({
               ))}
             </div>
           </div>
-          <Button
-            className="w-full"
-            onClick={() => void create()}
-            disabled={
-              !title.trim() ||
-              targetUserId === "" ||
-              selected.size === 0 ||
-              saving
-            }
-          >
-            {saving && <Spinner />}
-            Lưu nháp
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant="secondary"
+              onClick={() => void createDraft()}
+              disabled={!isFormValid || saving}
+            >
+              {saving && <Spinner />}
+              Lưu nháp
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => void createAndSubmit()}
+              disabled={!isFormValid || submitting}
+            >
+              {submitting && <Spinner />}
+              Gửi duyệt
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

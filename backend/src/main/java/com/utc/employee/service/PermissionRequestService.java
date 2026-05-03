@@ -240,7 +240,22 @@ public class PermissionRequestService {
         if (activeForSubmit.size() != r.getRequestedFeatures().size()) {
             throw new BadRequestException("Một số mã chức năng đã ngưng, cập nhật request trước khi gửi");
         }
-        r.setStatus(RequestStatus.PENDING);
+        
+        // Kiểm tra nếu người gửi là Manager/Admin có quyền phê duyệt
+        UserAccount target = r.getTargetUser();
+        if (accessPolicy.canApproveRequest(current, target)) {
+            // Tự động phê duyệt
+            r.setStatus(RequestStatus.APPROVED);
+            r.setReviewer(userAccountRepository.getReferenceById(current.id()));
+            r.setReviewedAt(Instant.now());
+            r.setRejectReason(null);
+            target.getFeatures().size(); // Load lazy collection
+            target.getFeatures().addAll(r.getRequestedFeatures());
+        } else {
+            // Chuyển sang chờ duyệt
+            r.setStatus(RequestStatus.PENDING);
+        }
+        
         r.setUpdatedAt(Instant.now());
         return toDto(requestRepository.save(r));
     }
@@ -343,6 +358,29 @@ public class PermissionRequestService {
         r.setDescription(body.description());
         r.setTargetUser(target);
         r.setRequestedFeatures(feats);
+        r.setUpdatedAt(Instant.now());
+        return toDto(requestRepository.save(r));
+    }
+
+    @Transactional
+    public PermissionRequestDto saveDraft(AuthUser current, Long id, CreatePermissionRequestBody body) {
+        PermissionRequest r = requestRepository.findById(id).orElseThrow();
+        if (!r.getRequester().getId().equals(current.id())) {
+            throw new ForbiddenException("Chỉ người tạo mới chỉnh sửa được");
+        }
+        if (r.getStatus() != RequestStatus.DRAFT && r.getStatus() != RequestStatus.REJECTED) {
+            throw new BadRequestException("Chỉ lưu nháp request ở trạng thái nháp hoặc từ chối");
+        }
+        UserAccount target = userAccountRepository.findById(body.targetUserId()).orElseThrow();
+        Set<Feature> feats = new HashSet<>(featureRepository.findByCodeInAndActiveTrue(body.requestedFeatureCodes()));
+        if (feats.size() != body.requestedFeatureCodes().size()) {
+            throw new BadRequestException("Mã chức năng không hợp lệ hoặc đã ngưng");
+        }
+        r.setTitle(body.title().trim());
+        r.setDescription(body.description());
+        r.setTargetUser(target);
+        r.setRequestedFeatures(feats);
+        r.setStatus(RequestStatus.DRAFT);
         r.setUpdatedAt(Instant.now());
         return toDto(requestRepository.save(r));
     }
