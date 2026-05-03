@@ -175,6 +175,10 @@ export function RequestsPage() {
     featureCode: "",
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const loadKey = useMemo(
     () =>
       `${tab}:${applied.q}:${applied.departmentId ?? ""}:${applied.requesterId ?? ""}:${applied.targetUserId ?? ""}:${applied.createdFrom}:${applied.createdTo}:${applied.featureCode}`,
@@ -197,7 +201,9 @@ export function RequestsPage() {
         ]);
         if (cancelled) return;
         if (key !== loadKeyRef.current) return;
-        setRows(r.data);
+        // Sort từ mới nhất (id giảm dần)
+        const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
+        setRows(sortedRows);
         setUsers(u.data);
         setFeatures(f.data);
         setLoadedKey(loadKeyRef.current);
@@ -225,7 +231,9 @@ export function RequestsPage() {
         api.get<FeatureOption[]>("/features"),
       ]);
       if (key !== loadKeyRef.current) return;
-      setRows(r.data);
+      // Sort từ mới nhất (id giảm dần)
+      const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
+      setRows(sortedRows);
       setUsers(u.data);
       setFeatures(f.data);
     } catch (e) {
@@ -249,6 +257,7 @@ export function RequestsPage() {
 
   function applyQuick() {
     setApplied((prev) => ({ ...prev, q: qInput.trim() }));
+    setCurrentPage(1); // Reset về trang 1 khi search
   }
 
   function applyAdvanced() {
@@ -261,6 +270,7 @@ export function RequestsPage() {
       createdTo: advTo,
       featureCode: advFeat,
     });
+    setCurrentPage(1); // Reset về trang 1 khi filter
   }
 
   function hasAdvFilters(a: ReqApplied) {
@@ -474,6 +484,10 @@ export function RequestsPage() {
                 onAction={refreshList}
                 emptyMessage={emptyHint}
                 hasFeature={hasFeature}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
               />
             </div>
           </Tabs>
@@ -494,6 +508,10 @@ type TableProps = {
   onAction: () => void;
   emptyMessage: string;
   hasFeature: (code: FeatureCode) => boolean;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 };
 
 function RequestTable({
@@ -507,6 +525,10 @@ function RequestTable({
   onAction,
   emptyMessage,
   hasFeature,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: TableProps) {
   const [rejectOpen, setRejectOpen] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -588,8 +610,16 @@ function RequestTable({
     );
   }
 
+  // Pagination logic
+  const totalItems = rows.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = rows.slice(startIndex, endIndex);
+
   return (
-    <div className="relative min-h-[min(55vh,26rem)] transition-opacity duration-200">
+    <>
+      <div className="relative min-h-[min(55vh,26rem)] transition-opacity duration-200">
       {refreshing && (
         <div
           className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/50 backdrop-blur-[1px]"
@@ -602,6 +632,7 @@ function RequestTable({
       <Table className={cn(refreshing && "opacity-60")}>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
+            <TableHead className="w-16 text-center">STT</TableHead>
             <TableHead>Mã</TableHead>
             <TableHead>Tiêu đề</TableHead>
             <TableHead>Đối tượng</TableHead>
@@ -610,12 +641,15 @@ function RequestTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => (
+          {paginatedRows.map((r, idx) => (
             <TableRow
               key={r.id}
               className="cursor-pointer transition-colors"
               onDoubleClick={() => setDetail(r)}
             >
+              <TableCell className="text-center text-sm text-zinc-500">
+                {startIndex + idx + 1}
+              </TableCell>
               <TableCell className="max-w-[100px] font-mono text-xs text-brand-300">
                 <CellWithTooltip text={r.code} />
               </TableCell>
@@ -737,18 +771,88 @@ function RequestTable({
         </TableBody>
       </Table>
 
-      <RequestDetailDialog
-        request={detail}
-        open={detail !== null}
-        onOpenChange={(o) => !o && setDetail(null)}
-      />
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between border-t border-zinc-200 px-6 py-4">
+        <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <span>Hiển thị</span>
+          <select
+            className="rounded-lg border border-zinc-200 px-2 py-1 text-sm"
+            value={pageSize}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value));
+              onPageChange(1);
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <span>/ trang · Tổng {totalItems} bản ghi</span>
+        </div>
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
-        onOpenChange={(o) => !o && setConfirmDelete(null)}
-        title="Xóa request?"
-        description={
-          confirmDelete
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Trước
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((page) => {
+                return (
+                  page === 1 ||
+                  page === totalPages ||
+                  Math.abs(page - currentPage) <= 1
+                );
+              })
+              .map((page, idx, arr) => {
+                const prevPage = arr[idx - 1];
+                const showEllipsis = prevPage && page - prevPage > 1;
+                return (
+                  <div key={page} className="flex items-center gap-1">
+                    {showEllipsis && (
+                      <span className="px-2 text-zinc-400">...</span>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={currentPage === page ? "default" : "ghost"}
+                      onClick={() => onPageChange(page)}
+                      className="min-w-[2rem]"
+                    >
+                      {page}
+                    </Button>
+                  </div>
+                );
+              })}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Sau
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <RequestDetailDialog
+      request={detail}
+      open={detail !== null}
+      onOpenChange={(o) => !o && setDetail(null)}
+    />
+
+    <ConfirmDialog
+      open={confirmDelete !== null}
+      onOpenChange={(o) => !o && setConfirmDelete(null)}
+      title="Xóa request?"
+      description={
+        confirmDelete
             ? `Bạn có chắc muốn xóa "${confirmDelete.title}" (${confirmDelete.code})? Thao tác không thể hoàn tác.`
             : undefined
         }
@@ -801,7 +905,7 @@ function RequestTable({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
@@ -982,6 +1086,11 @@ function EditRequestDialog({
       });
       toast.success("Đã cập nhật request");
       setOpen(false);
+      // Clear form sau khi save thành công
+      setTitle(request.title);
+      setDescription(request.description ?? "");
+      setTargetUserId(request.targetUserId);
+      setSelected(new Set(request.requestedFeatureCodes));
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -991,7 +1100,19 @@ function EditRequestDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          // Clear form khi đóng
+          setTitle(request.title);
+          setDescription(request.description ?? "");
+          setTargetUserId(request.targetUserId);
+          setSelected(new Set(request.requestedFeatureCodes));
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           size="sm"

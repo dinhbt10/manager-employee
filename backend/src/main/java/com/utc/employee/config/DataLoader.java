@@ -21,7 +21,8 @@ public class DataLoader {
             PermissionRequestRepository permissionRequestRepository,
             PasswordEncoder passwordEncoder) {
         return args -> {
-            if (featureRepository.count() > 0) {
+            // Chỉ seed khi chưa có dữ liệu (kiểm tra cả features và users)
+            if (featureRepository.count() > 0 || userAccountRepository.count() > 0) {
                 return;
             }
             List<Feature> feats = List.of(
