@@ -136,6 +136,7 @@ public class UserService {
      * Trả về quyền mặc định theo role:
      * - EMPLOYEE: không có quyền gì (phải xin quyền qua đơn yêu cầu)
      * - MANAGER: có quyền cấp phòng ban (xem, sửa NV trong phòng, duyệt đơn trong phòng)
+     *            KHÔNG tự động có DEPT_VIEW (phải được cấp riêng nếu cần)
      * - ADMIN: có tất cả quyền
      */
     private Set<Feature> getDefaultFeaturesForRole(Role role) {
@@ -144,8 +145,8 @@ public class UserService {
             case MANAGER -> new HashSet<>(featureRepository.findByCodeInAndActiveTrue(Set.of(
                     FeatureCodes.EMP_VIEW_DEPT,
                     FeatureCodes.EMP_EDIT_DEPT,
-                    FeatureCodes.REQ_APPROVE_DEPT,
-                    FeatureCodes.DEPT_VIEW
+                    FeatureCodes.REQ_APPROVE_DEPT
+                    // KHÔNG có DEPT_VIEW - Manager phải được cấp riêng nếu cần
             )));
             case ADMIN -> new HashSet<>(featureRepository.findAll()); // Tất cả quyền
         };
@@ -163,8 +164,34 @@ public class UserService {
         }
         // Chỉ người có quyền EMP_EDIT_ALL mới được sửa role, department và features
         if (accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
+            Role oldRole = u.getRole();
+            
             if (req.role() != null) {
                 u.setRole(req.role());
+                
+                // Khi đổi role từ MANAGER xuống EMPLOYEE: xóa hết quyền liên quan phòng ban
+                if (oldRole == Role.MANAGER && req.role() == Role.EMPLOYEE) {
+                    Set<Feature> currentFeatures = new HashSet<>(u.getFeatures());
+                    currentFeatures.removeIf(f -> 
+                        f.getCode().equals(FeatureCodes.EMP_VIEW_DEPT) ||
+                        f.getCode().equals(FeatureCodes.EMP_EDIT_DEPT) ||
+                        f.getCode().equals(FeatureCodes.REQ_APPROVE_DEPT) ||
+                        f.getCode().equals(FeatureCodes.DEPT_VIEW) ||
+                        f.getCode().equals(FeatureCodes.DEPT_CREATE) ||
+                        f.getCode().equals(FeatureCodes.DEPT_EDIT)
+                    );
+                    u.setFeatures(currentFeatures);
+                }
+                // Khi đổi role từ EMPLOYEE lên MANAGER: gán quyền mặc định của MANAGER
+                else if (oldRole == Role.EMPLOYEE && req.role() == Role.MANAGER) {
+                    Set<Feature> currentFeatures = new HashSet<>(u.getFeatures());
+                    currentFeatures.addAll(featureRepository.findByCodeInAndActiveTrue(Set.of(
+                        FeatureCodes.EMP_VIEW_DEPT,
+                        FeatureCodes.EMP_EDIT_DEPT,
+                        FeatureCodes.REQ_APPROVE_DEPT
+                    )));
+                    u.setFeatures(currentFeatures);
+                }
             }
             if (req.departmentId() != null) {
                 u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
