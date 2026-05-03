@@ -4,6 +4,7 @@ import com.utc.employee.domain.Department;
 import com.utc.employee.repo.DepartmentRepository;
 import com.utc.employee.security.AccessPolicy;
 import com.utc.employee.security.AuthUser;
+import com.utc.employee.security.FeatureCodes;
 import com.utc.employee.web.BadRequestException;
 import com.utc.employee.web.ForbiddenException;
 import com.utc.employee.web.dto.CreateDepartmentRequest;
@@ -29,9 +30,22 @@ public class DepartmentService {
     @Transactional(readOnly = true)
     public List<DepartmentDto> list(AuthUser current, String q, Boolean active) {
         if (!accessPolicy.canManageDepartment(current)) {
-            throw new ForbiddenException("Chỉ Admin mới xem được phòng ban");
+            throw new ForbiddenException("Không có quyền xem phòng ban");
         }
-        return departmentRepository.findAll().stream()
+        
+        // Admin xem tất cả, Manager chỉ xem phòng của mình
+        List<Department> departments;
+        if (accessPolicy.isAdmin(current)) {
+            departments = departmentRepository.findAll();
+        } else if (accessPolicy.isManager(current) && current.departmentId() != null) {
+            // Manager chỉ xem phòng ban của mình
+            Department dept = departmentRepository.findById(current.departmentId()).orElse(null);
+            departments = dept != null ? List.of(dept) : List.of();
+        } else {
+            departments = List.of();
+        }
+        
+        return departments.stream()
                 .map(this::toDto)
                 .filter(d -> matches(d, q, active))
                 .toList();
@@ -52,7 +66,11 @@ public class DepartmentService {
     @Transactional
     public DepartmentDto create(AuthUser current, CreateDepartmentRequest req) {
         if (!accessPolicy.canManageDepartment(current)) {
-            throw new ForbiddenException("Chỉ Admin mới thêm phòng ban");
+            throw new ForbiddenException("Không có quyền tạo phòng ban");
+        }
+        // Chỉ cho phép tạo nếu có quyền DEPT_CREATE
+        if (!accessPolicy.hasFeature(current, FeatureCodes.DEPT_CREATE)) {
+            throw new ForbiddenException("Không có quyền tạo phòng ban");
         }
         long next = departmentRepository.count() + 1;
         String code = "PB" + String.format("%03d", next);
@@ -66,7 +84,11 @@ public class DepartmentService {
     @Transactional
     public DepartmentDto update(AuthUser current, Long id, UpdateDepartmentRequest req) {
         if (!accessPolicy.canManageDepartment(current)) {
-            throw new ForbiddenException("Chỉ Admin mới sửa phòng ban");
+            throw new ForbiddenException("Không có quyền sửa phòng ban");
+        }
+        // Chỉ cho phép sửa nếu có quyền DEPT_EDIT
+        if (!accessPolicy.hasFeature(current, FeatureCodes.DEPT_EDIT)) {
+            throw new ForbiddenException("Không có quyền sửa phòng ban");
         }
         Department d = departmentRepository.findById(id).orElseThrow();
         if (req.name() != null && !req.name().isBlank()) {

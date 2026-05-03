@@ -6,6 +6,7 @@ import com.utc.employee.repo.FeatureRepository;
 import com.utc.employee.repo.UserAccountRepository;
 import com.utc.employee.security.AccessPolicy;
 import com.utc.employee.security.AuthUser;
+import com.utc.employee.security.FeatureCodes;
 import com.utc.employee.web.BadRequestException;
 import com.utc.employee.web.ForbiddenException;
 import com.utc.employee.web.dto.CreateUserRequest;
@@ -110,8 +111,8 @@ public class UserService {
 
     @Transactional
     public UserDto create(AuthUser current, CreateUserRequest req) {
-        if (!accessPolicy.isAdmin(current)) {
-            throw new ForbiddenException("Chỉ Admin tạo nhân viên trực tiếp");
+        if (!accessPolicy.hasFeature(current, FeatureCodes.EMP_CREATE)) {
+            throw new ForbiddenException("Không có quyền tạo nhân viên");
         }
         if (userAccountRepository.findByUsername(req.username()).isPresent()) {
             throw new BadRequestException("Username đã tồn tại");
@@ -140,7 +141,8 @@ public class UserService {
         if (req.fullName() != null && !req.fullName().isBlank()) {
             u.setFullName(req.fullName().trim());
         }
-        if (accessPolicy.isAdmin(current)) {
+        // Chỉ người có quyền EMP_EDIT_ALL mới được sửa role, department và features
+        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
             if (req.role() != null) {
                 u.setRole(req.role());
             }

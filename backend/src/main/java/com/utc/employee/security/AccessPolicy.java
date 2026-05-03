@@ -32,11 +32,8 @@ public class AccessPolicy {
         return hasFeature(u, FeatureCodes.DEPT_VIEW);
     }
 
-    /** Danh mục mã chức năng (cấu hình hệ thống) — chỉ Admin. */
+    /** Danh mục mã chức năng (cấu hình hệ thống) — Admin hoặc có feature FEATURE_VIEW. */
     public boolean canManageFeatures(AuthUser u) {
-        if (isAdmin(u)) {
-            return true;
-        }
         return hasFeature(u, FeatureCodes.FEATURE_VIEW);
     }
 

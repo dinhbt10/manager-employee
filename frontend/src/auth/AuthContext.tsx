@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.role === "ADMIN";
   const isManager = user?.role === "MANAGER";
-  const canSeeDepartments = isAdmin;
+  const canSeeDepartments = isAdmin || isManager; // Manager cũng thấy menu Phòng ban
 
   const hasFeature = useCallback(
     (code: FeatureCode): boolean => {
@@ -112,6 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (code === "EMP_EDIT_DEPT") return true;
         // Quyền phê duyệt request trong phòng
         if (code === "REQ_APPROVE_DEPT") return true;
+        // Quyền xem phòng ban (chỉ xem, không tạo/sửa)
+        if (code === "DEPT_VIEW") return true;
+        // KHÔNG tự động có DEPT_CREATE và DEPT_EDIT
       }
       
       return user?.features.includes(code) ?? false;

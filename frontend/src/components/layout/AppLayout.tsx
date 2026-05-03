@@ -223,10 +223,50 @@ export function AppLayout() {
                     <Badge className="bg-zinc-900 font-normal text-white hover:bg-zinc-900">
                       Toàn quyền hệ thống
                     </Badge>
-                  ) : user.role === "MANAGER" && user.features.length === 0 ? (
-                    <p className="text-xs leading-relaxed text-zinc-600">
-                      Quản lý — đủ quyền với nhân viên thuộc phòng ban (theo chính sách hệ thống).
-                    </p>
+                  ) : user.role === "MANAGER" && user.departmentId ? (
+                    <>
+                      <p className="text-xs leading-relaxed text-zinc-600">
+                        <strong>Quyền tự động của Quản lý phòng ban:</strong>
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="secondary" className="font-normal">
+                          ✓ Xem nhân viên trong phòng
+                        </Badge>
+                        <Badge variant="secondary" className="font-normal">
+                          ✓ Sửa nhân viên trong phòng
+                        </Badge>
+                        <Badge variant="secondary" className="font-normal">
+                          ✓ Phê duyệt request trong phòng
+                        </Badge>
+                        <Badge variant="secondary" className="font-normal">
+                          ✓ Quản lý phòng ban
+                        </Badge>
+                      </div>
+                      {user.features.length > 0 && (
+                        <>
+                          <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+                            <strong>Quyền bổ sung từ hệ thống:</strong>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[...user.features].sort().map((code) => {
+                              const name =
+                                featureOptions.find((f) => f.code === code)?.name ??
+                                code;
+                              return (
+                                <Badge
+                                  key={code}
+                                  variant="secondary"
+                                  className="max-w-full font-normal"
+                                  title={code}
+                                >
+                                  <span className="truncate">{name}</span>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </>
                   ) : user.features.length === 0 ? (
                     <p className="text-xs text-zinc-500">
                       Chưa có chức năng riêng trong cơ sở dữ liệu.

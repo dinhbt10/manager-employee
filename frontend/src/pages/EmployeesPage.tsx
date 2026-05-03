@@ -82,7 +82,7 @@ function permissionTooltip(user: User, labelByCode: Map<string, string>): string
 }
 
 export function EmployeesPage() {
-  const { isAdmin, hasFeature } = useAuth();
+  const { hasFeature } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -202,7 +202,7 @@ export function EmployeesPage() {
                     <option value="EMPLOYEE">Nhân viên</option>
                   </select>
                 </div>
-                {isAdmin && (
+                {hasFeature(FeatureCodes.EMP_VIEW_ALL) && (
                   <div>
                     <Label>Phòng ban</Label>
                     <select
