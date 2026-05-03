@@ -125,10 +125,30 @@ public class UserService {
         u.setEmployeeCode("NV" + String.format("%04d", seq));
         u.setRole(req.role());
         u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
-        if (req.featureCodes() != null && !req.featureCodes().isEmpty()) {
-            u.setFeatures(resolveFeatures(req.featureCodes()));
-        }
+        
+        // Gán quyền mặc định theo role
+        u.setFeatures(getDefaultFeaturesForRole(req.role()));
+        
         return toDto(userAccountRepository.save(u), current);
+    }
+    
+    /**
+     * Trả về quyền mặc định theo role:
+     * - EMPLOYEE: không có quyền gì (phải xin quyền qua đơn yêu cầu)
+     * - MANAGER: có quyền cấp phòng ban (xem, sửa NV trong phòng, duyệt đơn trong phòng)
+     * - ADMIN: có tất cả quyền
+     */
+    private Set<Feature> getDefaultFeaturesForRole(Role role) {
+        return switch (role) {
+            case EMPLOYEE -> new HashSet<>(); // Không có quyền gì
+            case MANAGER -> new HashSet<>(featureRepository.findByCodeInAndActiveTrue(Set.of(
+                    FeatureCodes.EMP_VIEW_DEPT,
+                    FeatureCodes.EMP_EDIT_DEPT,
+                    FeatureCodes.REQ_APPROVE_DEPT,
+                    FeatureCodes.DEPT_VIEW
+            )));
+            case ADMIN -> new HashSet<>(featureRepository.findAll()); // Tất cả quyền
+        };
     }
 
     @Transactional

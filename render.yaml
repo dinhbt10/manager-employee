@@ -1,0 +1,35 @@
+services:
+  # Backend API
+  - type: web
+    name: employee-manager-api
+    runtime: java
+    buildCommand: cd backend && mvn clean package -DskipTests
+    startCommand: cd backend && java -jar target/employee-manager-api-0.1.0-SNAPSHOT.jar
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: DATABASE_URL
+        fromDatabase:
+          name: employee-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://employee-manager-frontend.onrender.com
+    healthCheckPath: /actuator/health
+
+  # Frontend (nếu muốn deploy frontend lên Render)
+  - type: web
+    name: employee-manager-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://employee-manager-api.onrender.com
+
+databases:
+  - name: employee-db
+    databaseName: empdb
+    user: emp
+    plan: free

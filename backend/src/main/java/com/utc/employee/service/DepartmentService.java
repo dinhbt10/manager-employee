@@ -29,20 +29,24 @@ public class DepartmentService {
 
     @Transactional(readOnly = true)
     public List<DepartmentDto> list(AuthUser current, String q, Boolean active) {
-        if (!accessPolicy.canManageDepartment(current)) {
-            throw new ForbiddenException("Không có quyền xem phòng ban");
-        }
+        // Admin: xem tất cả
+        // Manager: xem phòng ban của mình (không cần DEPT_VIEW)
+        // Nhân viên có DEPT_VIEW: xem tất cả
         
-        // Admin xem tất cả, Manager chỉ xem phòng của mình
         List<Department> departments;
+        
         if (accessPolicy.isAdmin(current)) {
+            // Admin xem tất cả
             departments = departmentRepository.findAll();
         } else if (accessPolicy.isManager(current) && current.departmentId() != null) {
-            // Manager chỉ xem phòng ban của mình
+            // Manager chỉ xem phòng ban của mình (không cần feature DEPT_VIEW)
             Department dept = departmentRepository.findById(current.departmentId()).orElse(null);
             departments = dept != null ? List.of(dept) : List.of();
+        } else if (accessPolicy.hasFeature(current, FeatureCodes.DEPT_VIEW)) {
+            // Nhân viên có quyền DEPT_VIEW: xem tất cả
+            departments = departmentRepository.findAll();
         } else {
-            departments = List.of();
+            throw new ForbiddenException("Không có quyền xem phòng ban");
         }
         
         return departments.stream()

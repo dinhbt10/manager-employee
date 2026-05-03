@@ -1,0 +1,33 @@
+# Profile để test PostgreSQL trên máy local (không dùng Docker)
+# Chạy: mvn spring-boot:run -Dspring-boot.run.profiles=local-postgres
+# Yêu cầu: PostgreSQL đã cài đặt và chạy trên máy
+
+spring:
+  config:
+    activate:
+      on-profile: local-postgres
+  datasource:
+    url: jdbc:postgresql://localhost:5432/empdb
+    username: emp
+    password: emp
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-docker.sql
+
+# Để tạo database và user trên PostgreSQL local:
+# psql postgres
+# CREATE DATABASE empdb;
+# CREATE USER emp WITH PASSWORD 'emp';
+# GRANT ALL PRIVILEGES ON DATABASE empdb TO emp;
+# \q

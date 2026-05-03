@@ -42,7 +42,10 @@ export function AppLayout() {
   const canSeeEmployees =
     hasFeature(FeatureCodes.EMP_VIEW_ALL) ||
     hasFeature(FeatureCodes.EMP_VIEW_DEPT);
-  const canSeeDepartments = hasFeature(FeatureCodes.DEPT_VIEW);
+  const canSeeDepartments = 
+    user?.role === "ADMIN" || 
+    (user?.role === "MANAGER" && user?.departmentId != null) ||
+    hasFeature(FeatureCodes.DEPT_VIEW);
   const canSeeFeatures = hasFeature(FeatureCodes.FEATURE_VIEW);
 
   return (
@@ -239,7 +242,7 @@ export function AppLayout() {
                           ✓ Phê duyệt request trong phòng
                         </Badge>
                         <Badge variant="secondary" className="font-normal">
-                          ✓ Quản lý phòng ban
+                          ✓ Xem phòng ban của mình
                         </Badge>
                       </div>
                       {user.features.length > 0 && (

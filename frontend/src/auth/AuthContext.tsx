@@ -112,9 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (code === "EMP_EDIT_DEPT") return true;
         // Quyền phê duyệt request trong phòng
         if (code === "REQ_APPROVE_DEPT") return true;
-        // Quyền xem phòng ban (chỉ xem, không tạo/sửa)
-        if (code === "DEPT_VIEW") return true;
-        // KHÔNG tự động có DEPT_CREATE và DEPT_EDIT
+        // KHÔNG tự động có DEPT_VIEW, DEPT_CREATE và DEPT_EDIT
+        // Manager phải được cấp quyền DEPT_VIEW từ hệ thống nếu muốn xem phòng ban
       }
       
       return user?.features.includes(code) ?? false;
