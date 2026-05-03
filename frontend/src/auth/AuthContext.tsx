@@ -103,9 +103,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasFeature = useCallback(
     (code: FeatureCode): boolean => {
       if (user?.role === "ADMIN") return true;
+      
+      // Manager tự động có quyền trong phòng ban của mình
+      if (user?.role === "MANAGER" && user?.departmentId) {
+        // Quyền xem nhân viên trong phòng
+        if (code === "EMP_VIEW_DEPT" || code === "EMP_VIEW_ALL") return true;
+        // Quyền sửa nhân viên trong phòng
+        if (code === "EMP_EDIT_DEPT") return true;
+        // Quyền phê duyệt request trong phòng
+        if (code === "REQ_APPROVE_DEPT") return true;
+      }
+      
       return user?.features.includes(code) ?? false;
     },
-    [user?.features, user?.role],
+    [user?.features, user?.role, user?.departmentId],
   );
 
   const value = useMemo<AuthContextValue>(

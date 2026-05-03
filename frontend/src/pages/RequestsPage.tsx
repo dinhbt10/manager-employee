@@ -159,7 +159,7 @@ export function RequestsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<"draft" | "pending" | "approved">("pending");
+  const [tab, setTab] = useState<"draft" | "pending" | "approved">("draft");
   const [qInput, setQInput] = useState("");
   const [advOpen, setAdvOpen] = useState(false);
   const [advDept, setAdvDept] = useState<number | "">("");

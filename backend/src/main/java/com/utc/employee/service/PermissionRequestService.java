@@ -368,8 +368,10 @@ public class PermissionRequestService {
         if (!r.getRequester().getId().equals(current.id())) {
             throw new ForbiddenException("Chỉ người tạo mới chỉnh sửa được");
         }
-        if (r.getStatus() != RequestStatus.DRAFT && r.getStatus() != RequestStatus.REJECTED) {
-            throw new BadRequestException("Chỉ lưu nháp request ở trạng thái nháp hoặc từ chối");
+        if (r.getStatus() != RequestStatus.DRAFT 
+                && r.getStatus() != RequestStatus.REJECTED 
+                && r.getStatus() != RequestStatus.REVOKED) {
+            throw new BadRequestException("Chỉ lưu nháp request ở trạng thái nháp, từ chối hoặc đã gỡ");
         }
         UserAccount target = userAccountRepository.findById(body.targetUserId()).orElseThrow();
         Set<Feature> feats = new HashSet<>(featureRepository.findByCodeInAndActiveTrue(body.requestedFeatureCodes()));
