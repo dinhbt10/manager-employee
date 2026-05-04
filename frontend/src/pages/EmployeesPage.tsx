@@ -309,6 +309,9 @@ export function EmployeesPage() {
                   <TableHead>Họ tên</TableHead>
                   <TableHead>Vai trò</TableHead>
                   <TableHead>Phòng ban</TableHead>
+                  <TableHead>Giới tính</TableHead>
+                  <TableHead>Ngày sinh</TableHead>
+                  <TableHead>CCCD</TableHead>
                   <TableHead>Quyền</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
@@ -331,6 +334,15 @@ export function EmployeesPage() {
                     </TableCell>
                     <TableCell className="max-w-[180px] text-zinc-600">
                       <CellWithTooltip text={u.departmentName ?? undefined} />
+                    </TableCell>
+                    <TableCell className="text-zinc-600">
+                      {u.gender || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-600 text-xs">
+                      {u.dateOfBirth || "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-zinc-600">
+                      {u.citizenId || "—"}
                     </TableCell>
                     <TableCell className="max-w-[240px]">
                       <div
