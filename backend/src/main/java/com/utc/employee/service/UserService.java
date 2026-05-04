@@ -130,6 +130,23 @@ public class UserService {
         u.setRole(req.role());
         u.setDepartment(departmentRepository.findById(req.departmentId()).orElseThrow());
         
+        // Thông tin cá nhân
+        if (req.gender() != null && !req.gender().isBlank()) {
+            u.setGender(req.gender().trim());
+        }
+        if (req.dateOfBirth() != null && !req.dateOfBirth().isBlank()) {
+            u.setDateOfBirth(java.time.LocalDate.parse(req.dateOfBirth()));
+        }
+        if (req.address() != null && !req.address().isBlank()) {
+            u.setAddress(req.address().trim());
+        }
+        if (req.nationality() != null && !req.nationality().isBlank()) {
+            u.setNationality(req.nationality().trim());
+        }
+        if (req.citizenId() != null && !req.citizenId().isBlank()) {
+            u.setCitizenId(req.citizenId().trim());
+        }
+        
         // Gán quyền: mặc định theo role + quyền được chọn thêm từ UI
         Set<Feature> features = getDefaultFeaturesForRole(req.role());
         if (req.featureCodes() != null && !req.featureCodes().isEmpty()) {
@@ -170,6 +187,24 @@ public class UserService {
         if (req.fullName() != null && !req.fullName().isBlank()) {
             u.setFullName(req.fullName().trim());
         }
+        
+        // Cập nhật thông tin cá nhân
+        if (req.gender() != null) {
+            u.setGender(req.gender().isBlank() ? null : req.gender().trim());
+        }
+        if (req.dateOfBirth() != null) {
+            u.setDateOfBirth(req.dateOfBirth().isBlank() ? null : java.time.LocalDate.parse(req.dateOfBirth()));
+        }
+        if (req.address() != null) {
+            u.setAddress(req.address().isBlank() ? null : req.address().trim());
+        }
+        if (req.nationality() != null) {
+            u.setNationality(req.nationality().isBlank() ? null : req.nationality().trim());
+        }
+        if (req.citizenId() != null) {
+            u.setCitizenId(req.citizenId().isBlank() ? null : req.citizenId().trim());
+        }
+        
         // Chỉ người có quyền EMP_EDIT_ALL mới được sửa role, department và features
         if (accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
             Role oldRole = u.getRole();
@@ -236,7 +271,12 @@ public class UserService {
                 deptId,
                 deptName,
                 codes,
-                readOnly
+                readOnly,
+                u.getGender(),
+                u.getDateOfBirth() != null ? u.getDateOfBirth().toString() : null,
+                u.getAddress(),
+                u.getNationality(),
+                u.getCitizenId()
         );
     }
 
@@ -270,7 +310,7 @@ public class UserService {
 
             // Tạo header row
             Row headerRow = sheet.createRow(0);
-            String[] columns = {"Mã NV", "Họ tên", "Username", "Vai trò", "Phòng ban", "Quyền"};
+            String[] columns = {"Mã NV", "Họ tên", "Username", "Vai trò", "Phòng ban", "Giới tính", "Ngày sinh", "Địa chỉ", "Quốc tịch", "CCCD", "Quyền"};
             for (int i = 0; i < columns.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(columns[i]);
@@ -286,7 +326,12 @@ public class UserService {
                 row.createCell(2).setCellValue(user.username());
                 row.createCell(3).setCellValue(getRoleLabel(user.role()));
                 row.createCell(4).setCellValue(user.departmentName() != null ? user.departmentName() : "");
-                row.createCell(5).setCellValue(String.join(", ", user.features()));
+                row.createCell(5).setCellValue(user.gender() != null ? user.gender() : "");
+                row.createCell(6).setCellValue(user.dateOfBirth() != null ? user.dateOfBirth() : "");
+                row.createCell(7).setCellValue(user.address() != null ? user.address() : "");
+                row.createCell(8).setCellValue(user.nationality() != null ? user.nationality() : "");
+                row.createCell(9).setCellValue(user.citizenId() != null ? user.citizenId() : "");
+                row.createCell(10).setCellValue(String.join(", ", user.features()));
             }
 
             // Auto-size columns

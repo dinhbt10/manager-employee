@@ -12,6 +12,11 @@ public record CreateUserRequest(
         @NotBlank String password,
         @NotNull Role role,
         @NotNull Long departmentId,
-        Set<String> featureCodes
+        Set<String> featureCodes,
+        String gender,
+        String dateOfBirth, // ISO format: yyyy-MM-dd
+        String address,
+        String nationality,
+        String citizenId
 ) {
 }

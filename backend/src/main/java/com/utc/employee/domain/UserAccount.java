@@ -2,6 +2,7 @@ package com.utc.employee.domain;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -40,6 +41,22 @@ public class UserAccount {
             inverseJoinColumns = @JoinColumn(name = "feature_id")
     )
     private Set<Feature> features = new HashSet<>();
+
+    // Thông tin cá nhân bổ sung
+    @Column(length = 10)
+    private String gender; // "Nam", "Nữ", "Khác"
+
+    @Column
+    private LocalDate dateOfBirth;
+
+    @Column(length = 1000)
+    private String address;
+
+    @Column(length = 100)
+    private String nationality;
+
+    @Column(length = 20)
+    private String citizenId; // CCCD
 
     public Long getId() {
         return id;
@@ -99,5 +116,45 @@ public class UserAccount {
 
     public void setFeatures(Set<Feature> features) {
         this.features = features;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public String getCitizenId() {
+        return citizenId;
+    }
+
+    public void setCitizenId(String citizenId) {
+        this.citizenId = citizenId;
     }
 }

@@ -50,6 +50,11 @@ export interface User {
   departmentName: string | null;
   features: string[];
   readOnlyProfile: boolean;
+  gender: string | null;
+  dateOfBirth: string | null; // ISO format: yyyy-MM-dd
+  address: string | null;
+  nationality: string | null;
+  citizenId: string | null;
 }
 
 export interface FeatureOption {

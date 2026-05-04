@@ -399,7 +399,7 @@ function EmployeeDetailDialog({
   if (!user) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">Chi tiết nhân viên</DialogTitle>
         </DialogHeader>
@@ -438,6 +438,46 @@ function EmployeeDetailDialog({
               {user.departmentName ?? "—"}
             </dd>
           </div>
+          {user.gender && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Giới tính
+              </dt>
+              <dd className="mt-0.5 text-zinc-900">{user.gender}</dd>
+            </div>
+          )}
+          {user.dateOfBirth && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Ngày sinh
+              </dt>
+              <dd className="mt-0.5 text-zinc-900">{user.dateOfBirth}</dd>
+            </div>
+          )}
+          {user.address && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Địa chỉ
+              </dt>
+              <dd className="mt-0.5 text-zinc-900">{user.address}</dd>
+            </div>
+          )}
+          {user.nationality && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Quốc tịch
+              </dt>
+              <dd className="mt-0.5 text-zinc-900">{user.nationality}</dd>
+            </div>
+          )}
+          {user.citizenId && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                CCCD
+              </dt>
+              <dd className="mt-0.5 font-mono text-zinc-900">{user.citizenId}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Chức năng đã cấp
@@ -533,12 +573,22 @@ function EditUserDialog({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(user.features),
   );
+  const [gender, setGender] = useState(user.gender || "");
+  const [dateOfBirth, setDateOfBirth] = useState(user.dateOfBirth || "");
+  const [address, setAddress] = useState(user.address || "");
+  const [nationality, setNationality] = useState(user.nationality || "");
+  const [citizenId, setCitizenId] = useState(user.citizenId || "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setFullName(user.fullName);
     setSelected(new Set(user.features));
-  }, [user.features, user.fullName, user.id]);
+    setGender(user.gender || "");
+    setDateOfBirth(user.dateOfBirth || "");
+    setAddress(user.address || "");
+    setNationality(user.nationality || "");
+    setCitizenId(user.citizenId || "");
+  }, [user.features, user.fullName, user.id, user.gender, user.dateOfBirth, user.address, user.nationality, user.citizenId]);
 
   const featureOptions = useMemo(() => {
     const byCode = new Map(features.map((f) => [f.code, f]));
@@ -563,7 +613,14 @@ function EditUserDialog({
     setSaving(true);
     try {
       if (user.role === "ADMIN") {
-        await api.patch(`/users/${user.id}`, { fullName: fullName.trim() });
+        await api.patch(`/users/${user.id}`, { 
+          fullName: fullName.trim(),
+          gender: gender || null,
+          dateOfBirth: dateOfBirth || null,
+          address: address.trim() || null,
+          nationality: nationality.trim() || null,
+          citizenId: citizenId.trim() || null,
+        });
         toast.success("Đã cập nhật nhân viên");
       } else {
         const activeCodes = new Set(features.map((f) => f.code));
@@ -581,6 +638,11 @@ function EditUserDialog({
         await api.patch(`/users/${user.id}`, {
           fullName: fullName.trim(),
           featureCodes,
+          gender: gender || null,
+          dateOfBirth: dateOfBirth || null,
+          address: address.trim() || null,
+          nationality: nationality.trim() || null,
+          citizenId: citizenId.trim() || null,
         });
         toast.success("Đã cập nhật nhân viên và phân quyền");
       }
@@ -623,35 +685,91 @@ function EditUserDialog({
             </>
           )}
         </p>
-        <div>
-          <Label>Họ tên</Label>
-          <Input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-        {user.role !== "ADMIN" && (
-          <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-            {featureOptions.map((f) => (
-              <label
-                key={f.code}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(f.code)}
-                  onChange={() => toggle(f.code)}
-                  className="rounded border-zinc-300"
-                />
-                <span>{f.name}</span>
-                <span className="font-mono text-xs text-zinc-500">
-                  {f.code}
-                </span>
-              </label>
-            ))}
+        <div className="space-y-3">
+          <div>
+            <Label>Họ tên</Label>
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="mt-1"
+            />
           </div>
-        )}
+          
+          <div className="border-t pt-3">
+            <p className="mb-2 text-sm font-medium text-zinc-700">Thông tin cá nhân</p>
+            <div className="space-y-3">
+              <div>
+                <Label>Giới tính</Label>
+                <select
+                  className={cn(
+                    "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
+                  )}
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                >
+                  <option value="">— Chọn —</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div>
+                <Label>Ngày sinh</Label>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Địa chỉ</Label>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Số nhà, đường, phường, quận, thành phố"
+                />
+              </div>
+              <div>
+                <Label>Quốc tịch</Label>
+                <Input
+                  value={nationality}
+                  onChange={(e) => setNationality(e.target.value)}
+                  placeholder="Việt Nam"
+                />
+              </div>
+              <div>
+                <Label>CCCD</Label>
+                <Input
+                  value={citizenId}
+                  onChange={(e) => setCitizenId(e.target.value)}
+                  placeholder="Số căn cước công dân"
+                />
+              </div>
+            </div>
+          </div>
+
+          {user.role !== "ADMIN" && (
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+              {featureOptions.map((f) => (
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.code)}
+                    onChange={() => toggle(f.code)}
+                    className="rounded border-zinc-300"
+                  />
+                  <span>{f.name}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
         <Button
           className="w-full"
           onClick={() => void save()}
@@ -681,6 +799,11 @@ function CreateUserDialog({
   const [role, setRole] = useState<"EMPLOYEE" | "MANAGER">("EMPLOYEE");
   const [departmentId, setDepartmentId] = useState<number | "">("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [gender, setGender] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [address, setAddress] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [citizenId, setCitizenId] = useState("");
   const [saving, setSaving] = useState(false);
 
   function toggle(code: string) {
@@ -702,6 +825,11 @@ function CreateUserDialog({
         role,
         departmentId,
         featureCodes: [...selected],
+        gender: gender.trim() || null,
+        dateOfBirth: dateOfBirth || null,
+        address: address.trim() || null,
+        nationality: nationality.trim() || null,
+        citizenId: citizenId.trim() || null,
       });
       toast.success("Đã tạo nhân viên mới");
       setOpen(false);
@@ -710,6 +838,11 @@ function CreateUserDialog({
       setPassword("");
       setDepartmentId("");
       setSelected(new Set());
+      setGender("");
+      setDateOfBirth("");
+      setAddress("");
+      setNationality("");
+      setCitizenId("");
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -730,6 +863,11 @@ function CreateUserDialog({
           setRole("EMPLOYEE");
           setDepartmentId("");
           setSelected(new Set());
+          setGender("");
+          setDateOfBirth("");
+          setAddress("");
+          setNationality("");
+          setCitizenId("");
         }
       }}
     >
@@ -745,21 +883,21 @@ function CreateUserDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Họ tên</Label>
+            <Label>Họ tên *</Label>
             <Input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
           </div>
           <div>
-            <Label>Username</Label>
+            <Label>Username *</Label>
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
           <div>
-            <Label>Mật khẩu</Label>
+            <Label>Mật khẩu *</Label>
             <Input
               type="password"
               value={password}
@@ -767,7 +905,7 @@ function CreateUserDialog({
             />
           </div>
           <div>
-            <Label>Vai trò</Label>
+            <Label>Vai trò *</Label>
             <select
               className={cn(
                 "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
@@ -782,7 +920,7 @@ function CreateUserDialog({
             </select>
           </div>
           <div>
-            <Label>Phòng ban</Label>
+            <Label>Phòng ban *</Label>
             <select
               className={cn(
                 "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
@@ -808,6 +946,60 @@ function CreateUserDialog({
               </p>
             )}
           </div>
+          
+          <div className="border-t pt-3">
+            <p className="mb-2 text-sm font-medium text-zinc-700">Thông tin cá nhân (tùy chọn)</p>
+            <div className="space-y-3">
+              <div>
+                <Label>Giới tính</Label>
+                <select
+                  className={cn(
+                    "flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm",
+                  )}
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                >
+                  <option value="">— Chọn —</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div>
+                <Label>Ngày sinh</Label>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Địa chỉ</Label>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Số nhà, đường, phường, quận, thành phố"
+                />
+              </div>
+              <div>
+                <Label>Quốc tịch</Label>
+                <Input
+                  value={nationality}
+                  onChange={(e) => setNationality(e.target.value)}
+                  placeholder="Việt Nam"
+                />
+              </div>
+              <div>
+                <Label>CCCD</Label>
+                <Input
+                  value={citizenId}
+                  onChange={(e) => setCitizenId(e.target.value)}
+                  placeholder="Số căn cước công dân"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <Label>Quyền chức năng</Label>
             <div className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">

@@ -11,6 +11,11 @@ public record UserDto(
         Long departmentId,
         String departmentName,
         Set<String> features,
-        boolean readOnlyProfile
+        boolean readOnlyProfile,
+        String gender,
+        String dateOfBirth, // ISO format: yyyy-MM-dd
+        String address,
+        String nationality,
+        String citizenId
 ) {
 }

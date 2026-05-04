@@ -8,6 +8,11 @@ public record UpdateUserRequest(
         String fullName,
         Role role,
         Long departmentId,
-        Set<String> featureCodes
+        Set<String> featureCodes,
+        String gender,
+        String dateOfBirth, // ISO format: yyyy-MM-dd
+        String address,
+        String nationality,
+        String citizenId
 ) {
 }
