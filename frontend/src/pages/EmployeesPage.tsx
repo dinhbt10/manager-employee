@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { Eye, Pencil, UserPlus, Download } from "lucide-react";
+import { Eye, Pencil, UserPlus, Download, Key } from "lucide-react";
 
 /**
  * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
@@ -82,13 +82,15 @@ function permissionTooltip(user: User, labelByCode: Map<string, string>): string
 }
 
 export function EmployeesPage() {
-  const { hasFeature } = useAuth();
+  const { hasFeature, user: currentUser } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailUser, setDetailUser] = useState<User | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const isAdmin = currentUser?.role === "ADMIN";
 
   const [qInput, setQInput] = useState("");
   const [advOpen, setAdvOpen] = useState(false);
@@ -366,6 +368,9 @@ export function EmployeesPage() {
                           <Eye className="h-3.5 w-3.5" />
                           Chi tiết
                         </Button>
+                        {isAdmin && (
+                          <EditCredentialsDialog user={u} onDone={load} />
+                        )}
                         {hasFeature(FeatureCodes.EMP_EDIT_DEPT) &&
                           !hasFeature(FeatureCodes.EMP_EDIT_ALL) && (
                             <ManagerEditEmployeeDialog user={u} onDone={load} />
@@ -790,6 +795,104 @@ function EditUserDialog({
           {saving && <Spinner />}
           Lưu
         </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditCredentialsDialog({
+  user,
+  onDone,
+}: {
+  user: User;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [username, setUsername] = useState(user.username);
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setUsername(user.username);
+    setPassword("");
+  }, [user.username, user.id]);
+
+  async function save() {
+    if (!username.trim() && !password.trim()) {
+      toast.error("Vui lòng nhập username hoặc password mới");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.patch(`/users/${user.id}/credentials`, {
+        username: username.trim() || undefined,
+        password: password || undefined,
+      });
+      toast.success("Đã cập nhật tài khoản");
+      setOpen(false);
+      setPassword("");
+      onDone();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-amber-200 text-amber-700 hover:bg-amber-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Key className="h-3 w-3" />
+          Tài khoản
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Đổi tài khoản — {user.fullName}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-zinc-500">
+          Chỉ Admin mới có quyền đổi username/password. Để trống nếu không muốn đổi.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label>Username hiện tại</Label>
+            <div className="mt-1 rounded-lg bg-zinc-100 px-3 py-2 font-mono text-sm text-zinc-600">
+              {user.username}
+            </div>
+          </div>
+          <div>
+            <Label>Username mới (để trống nếu không đổi)</Label>
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Nhập username mới"
+            />
+          </div>
+          <div>
+            <Label>Password mới (để trống nếu không đổi)</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nhập password mới"
+            />
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => void save()}
+            disabled={saving}
+          >
+            {saving && <Spinner />}
+            Lưu thay đổi
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

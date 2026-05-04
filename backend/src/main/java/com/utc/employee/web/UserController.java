@@ -2,6 +2,7 @@ package com.utc.employee.web;
 
 import com.utc.employee.service.UserService;
 import com.utc.employee.web.dto.CreateUserRequest;
+import com.utc.employee.web.dto.UpdateCredentialsRequest;
 import com.utc.employee.web.dto.UpdateUserRequest;
 import com.utc.employee.web.dto.UserDto;
 import jakarta.servlet.http.HttpServletResponse;
@@ -55,5 +56,10 @@ public class UserController {
             HttpServletResponse response
     ) throws IOException {
         userService.exportToExcel(currentUser.get(), q, role, departmentId, response);
+    }
+
+    @PatchMapping("/{id}/credentials")
+    public void updateCredentials(@PathVariable Long id, @RequestBody UpdateCredentialsRequest req) {
+        userService.updateCredentials(currentUser.get(), id, req);
     }
 }

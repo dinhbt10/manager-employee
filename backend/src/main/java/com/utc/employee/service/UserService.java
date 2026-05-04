@@ -356,4 +356,33 @@ public class UserService {
             default -> role;
         };
     }
+
+    @Transactional
+    public void updateCredentials(AuthUser current, Long userId, com.utc.employee.web.dto.UpdateCredentialsRequest req) {
+        // Chỉ ADMIN mới được đổi username/password của người khác
+        if (!accessPolicy.isAdmin(current)) {
+            throw new ForbiddenException("Chỉ Admin mới có quyền đổi tài khoản/mật khẩu");
+        }
+
+        UserAccount user = userAccountRepository.findById(userId).orElseThrow();
+
+        // Đổi username nếu có
+        if (req.username() != null && !req.username().isBlank()) {
+            String newUsername = req.username().trim();
+            // Kiểm tra username đã tồn tại chưa (trừ chính user này)
+            userAccountRepository.findByUsername(newUsername).ifPresent(existing -> {
+                if (!existing.getId().equals(userId)) {
+                    throw new BadRequestException("Username đã tồn tại");
+                }
+            });
+            user.setUsername(newUsername);
+        }
+
+        // Đổi password nếu có
+        if (req.password() != null && !req.password().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(req.password()));
+        }
+
+        userAccountRepository.save(user);
+    }
 }
