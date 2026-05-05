@@ -6,6 +6,7 @@ import { FeatureCodes } from "@/api/types";
 import { useAuth, roleLabel } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ListSearchBar } from "@/components/ListSearchBar";
+import { Pagination } from "@/components/Pagination";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +92,10 @@ export function EmployeesPage() {
   const [exporting, setExporting] = useState(false);
 
   const isAdmin = currentUser?.role === "ADMIN";
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [qInput, setQInput] = useState("");
   const [advOpen, setAdvOpen] = useState(false);
@@ -147,6 +152,7 @@ export function EmployeesPage() {
 
   function applyQuickSearch() {
     setApplied((prev) => ({ ...prev, q: qInput.trim() }));
+    setCurrentPage(1);
   }
 
   function applyAdvancedSearch() {
@@ -155,7 +161,15 @@ export function EmployeesPage() {
       role: advRole,
       departmentId: advDeptId === "" ? undefined : advDeptId,
     });
+    setCurrentPage(1);
   }
+
+  // Pagination logic
+  const totalItems = rows.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = rows.slice(startIndex, endIndex);
 
   async function exportToExcel() {
     if (!hasFeature(FeatureCodes.EMP_EXPORT)) {
@@ -319,7 +333,7 @@ export function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((u) => (
+                {paginatedRows.map((u) => (
                   <TableRow
                     key={u.id}
                     className="cursor-pointer transition-colors"
@@ -388,6 +402,16 @@ export function EmployeesPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!loading && rows.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+            />
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ListSearchBar } from "@/components/ListSearchBar";
+import { Pagination } from "@/components/Pagination";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,10 @@ export function FeaturesPage() {
   const [advOpen, setAdvOpen] = useState(false);
   const [advActive, setAdvActive] = useState<"" | "active" | "inactive">("");
   const [applied, setApplied] = useState<{ q: string; active?: boolean }>({ q: "" });
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +62,7 @@ export function FeaturesPage() {
 
   function applyQuick() {
     setApplied((prev) => ({ ...prev, q: qInput.trim() }));
+    setCurrentPage(1);
   }
 
   function applyAdvanced() {
@@ -64,7 +70,15 @@ export function FeaturesPage() {
       q: qInput.trim(),
       active: advActive === "" ? undefined : advActive === "active",
     });
+    setCurrentPage(1);
   }
+
+  // Pagination logic
+  const totalItems = rows.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = rows.slice(startIndex, endIndex);
 
   return (
     <div className="animate-fade-in-up">
@@ -129,7 +143,7 @@ export function FeaturesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((f) => (
+                {paginatedRows.map((f) => (
                   <TableRow key={f.id} className="transition-colors">
                     <TableCell className="max-w-[200px] font-mono text-xs text-brand-800">
                       <CellWithTooltip text={f.code} />
@@ -154,6 +168,16 @@ export function FeaturesPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!loading && rows.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+            />
           )}
         </CardContent>
       </Card>

@@ -58,10 +58,12 @@ public class UserService {
     }
 
     private List<UserDto> listBase(AuthUser current) {
-        if (current.role() == Role.EMPLOYEE) {
-            UserAccount self = userAccountRepository.findById(current.id()).orElseThrow();
-            return List.of(toDto(self, current));
+        // Admin hoặc có quyền EMP_VIEW_ALL: xem tất cả
+        if (accessPolicy.isAdmin(current) || accessPolicy.hasFeature(current, FeatureCodes.EMP_VIEW_ALL)) {
+            return userAccountRepository.findAll().stream().map(u -> toDto(u, current)).toList();
         }
+        
+        // Manager: xem nhân viên trong phòng
         if (current.role() == Role.MANAGER) {
             if (current.departmentId() == null) {
                 return List.of();
@@ -70,7 +72,17 @@ public class UserService {
                     .map(u -> toDto(u, current))
                     .toList();
         }
-        return userAccountRepository.findAll().stream().map(u -> toDto(u, current)).toList();
+        
+        // Nhân viên có quyền EMP_VIEW_DEPT: xem nhân viên trong phòng của mình
+        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_VIEW_DEPT) && current.departmentId() != null) {
+            return userAccountRepository.findByDepartment_Id(current.departmentId()).stream()
+                    .map(u -> toDto(u, current))
+                    .toList();
+        }
+        
+        // Nhân viên không có quyền gì: chỉ xem chính mình
+        UserAccount self = userAccountRepository.findById(current.id()).orElseThrow();
+        return List.of(toDto(self, current));
     }
 
     private boolean matchesUserFilter(UserDto d, String q, String role, Long departmentId) {

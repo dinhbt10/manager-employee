@@ -6,6 +6,7 @@ import com.utc.employee.repo.PermissionRequestRepository;
 import com.utc.employee.repo.UserAccountRepository;
 import com.utc.employee.security.AccessPolicy;
 import com.utc.employee.security.AuthUser;
+import com.utc.employee.security.FeatureCodes;
 import com.utc.employee.web.BadRequestException;
 import com.utc.employee.web.ForbiddenException;
 import com.utc.employee.web.dto.CreatePermissionRequestBody;
@@ -180,16 +181,27 @@ public class PermissionRequestService {
     }
 
     private boolean canSeeRequest(AuthUser viewer, PermissionRequest r) {
-        if (accessPolicy.isAdmin(viewer)) {
+        // Admin hoặc có quyền REQ_APPROVE_ALL: xem tất cả request
+        if (accessPolicy.isAdmin(viewer) || accessPolicy.hasFeature(viewer, FeatureCodes.REQ_APPROVE_ALL)) {
             return true;
         }
+        // Người tạo request
         if (r.getRequester().getId().equals(viewer.id())) {
             return true;
         }
+        // Người được yêu cầu cấp quyền
         if (r.getTargetUser().getId().equals(viewer.id())) {
             return true;
         }
+        // Manager xem request của nhân viên trong phòng
         if (accessPolicy.isManager(viewer) && r.getTargetUser().getDepartment() != null
+                && viewer.departmentId() != null
+                && viewer.departmentId().equals(r.getTargetUser().getDepartment().getId())) {
+            return true;
+        }
+        // Có quyền REQ_APPROVE_DEPT: xem request của nhân viên trong phòng
+        if (accessPolicy.hasFeature(viewer, FeatureCodes.REQ_APPROVE_DEPT)
+                && r.getTargetUser().getDepartment() != null
                 && viewer.departmentId() != null
                 && viewer.departmentId().equals(r.getTargetUser().getDepartment().getId())) {
             return true;
