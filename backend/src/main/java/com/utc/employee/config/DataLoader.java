@@ -7,8 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -239,7 +240,7 @@ public class DataLoader {
                 if (status == RequestStatus.APPROVED || status == RequestStatus.REJECTED) {
                     UserAccount reviewer = managers.get(random.nextInt(managers.size()));
                     req.setReviewer(reviewer);
-                    req.setReviewedAt(LocalDateTime.now().minusDays(random.nextInt(30)));
+                    req.setReviewedAt(Instant.now().minus(random.nextInt(30), ChronoUnit.DAYS));
                     
                     if (status == RequestStatus.REJECTED) {
                         String[] rejectReasons = {
