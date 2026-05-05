@@ -42,10 +42,7 @@ export function AppLayout() {
   const canSeeEmployees =
     hasFeature(FeatureCodes.EMP_VIEW_ALL) ||
     hasFeature(FeatureCodes.EMP_VIEW_DEPT);
-  const canSeeDepartments = 
-    user?.role === "ADMIN" || 
-    (user?.role === "MANAGER" && user?.departmentId != null) ||
-    hasFeature(FeatureCodes.DEPT_VIEW);
+  const canSeeDepartments = hasFeature(FeatureCodes.DEPT_VIEW);
   const canSeeFeatures = hasFeature(FeatureCodes.FEATURE_VIEW);
 
   return (

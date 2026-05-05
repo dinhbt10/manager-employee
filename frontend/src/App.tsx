@@ -36,7 +36,7 @@ function RequireEmployeeView() {
   return <Outlet />;
 }
 
-/** Phòng ban: xem danh sách — DEPT_VIEW (Admin luôn được qua hasFeature). */
+/** Phòng ban: chỉ user có DEPT_VIEW (Admin tự động có qua hasFeature) */
 function RequireDeptView() {
   const { hasFeature } = useAuth();
   if (!hasFeature(FeatureCodes.DEPT_VIEW)) {
