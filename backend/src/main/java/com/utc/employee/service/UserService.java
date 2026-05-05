@@ -58,8 +58,8 @@ public class UserService {
     }
 
     private List<UserDto> listBase(AuthUser current) {
-        // Admin hoặc có quyền EMP_VIEW_ALL: xem tất cả
-        if (accessPolicy.isAdmin(current) || accessPolicy.hasFeature(current, FeatureCodes.EMP_VIEW_ALL)) {
+        // Admin: xem tất cả
+        if (accessPolicy.isAdmin(current)) {
             return userAccountRepository.findAll().stream().map(u -> toDto(u, current)).toList();
         }
         
@@ -217,8 +217,8 @@ public class UserService {
             u.setCitizenId(req.citizenId().isBlank() ? null : req.citizenId().trim());
         }
         
-        // Chỉ người có quyền EMP_EDIT_ALL mới được sửa role, department và features
-        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
+        // Chỉ Admin mới được sửa role, department và features
+        if (accessPolicy.isAdmin(current)) {
             Role oldRole = u.getRole();
             
             if (req.role() != null) {

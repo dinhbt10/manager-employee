@@ -68,11 +68,10 @@ public class AccessPolicy {
                 && viewer.departmentId().equals(target.getDepartment().getId())) {
             return true;
         }
-        return hasFeature(viewer, FeatureCodes.EMP_VIEW_ALL)
-                || (hasFeature(viewer, FeatureCodes.EMP_VIEW_DEPT)
-                        && target.getDepartment() != null
-                        && viewer.departmentId() != null
-                        && viewer.departmentId().equals(target.getDepartment().getId()));
+        return hasFeature(viewer, FeatureCodes.EMP_VIEW_DEPT)
+                && target.getDepartment() != null
+                && viewer.departmentId() != null
+                && viewer.departmentId().equals(target.getDepartment().getId());
     }
 
     public boolean canEditEmployee(AuthUser viewer, UserAccount target) {
@@ -81,9 +80,6 @@ public class AccessPolicy {
         }
         if (isManager(viewer) && managerHasDeptScope(viewer,
                 target.getDepartment() != null ? target.getDepartment().getId() : null)) {
-            return true;
-        }
-        if (hasFeature(viewer, FeatureCodes.EMP_EDIT_ALL)) {
             return true;
         }
         return hasFeature(viewer, FeatureCodes.EMP_EDIT_DEPT)
@@ -100,10 +96,9 @@ public class AccessPolicy {
                 && managerHasDeptScope(u, targetUser.getDepartment().getId())) {
             return true;
         }
-        return hasFeature(u, FeatureCodes.REQ_APPROVE_ALL)
-                || (hasFeature(u, FeatureCodes.REQ_APPROVE_DEPT)
-                        && targetUser.getDepartment() != null
-                        && u.departmentId() != null
-                        && u.departmentId().equals(targetUser.getDepartment().getId()));
+        return hasFeature(u, FeatureCodes.REQ_APPROVE_DEPT)
+                && targetUser.getDepartment() != null
+                && u.departmentId() != null
+                && u.departmentId().equals(targetUser.getDepartment().getId());
     }
 }

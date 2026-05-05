@@ -181,8 +181,8 @@ public class PermissionRequestService {
     }
 
     private boolean canSeeRequest(AuthUser viewer, PermissionRequest r) {
-        // Admin hoặc có quyền REQ_APPROVE_ALL: xem tất cả request
-        if (accessPolicy.isAdmin(viewer) || accessPolicy.hasFeature(viewer, FeatureCodes.REQ_APPROVE_ALL)) {
+        // Admin: xem tất cả request
+        if (accessPolicy.isAdmin(viewer)) {
             return true;
         }
         // Người tạo request

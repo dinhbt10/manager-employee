@@ -35,10 +35,7 @@ public class DataLoader {
             // ========== FEATURES ==========
             List<Feature> feats = List.of(
                     f("EMP_CREATE", "Thêm nhân viên"),
-                    f("EMP_EDIT_ALL", "Sửa nhân viên (toàn hệ thống)"),
-                    f("EMP_VIEW_ALL", "Xem danh sách NV toàn hệ thống"),
                     f("EMP_EXPORT", "Xuất Excel nhân viên"),
-                    f("REQ_APPROVE_ALL", "Duyệt request toàn hệ thống"),
                     f("EMP_EDIT_DEPT", "Sửa NV trong phòng"),
                     f("EMP_VIEW_DEPT", "Xem NV trong phòng"),
                     f("REQ_APPROVE_DEPT", "Duyệt request trong phòng"),

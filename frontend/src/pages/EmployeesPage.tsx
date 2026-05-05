@@ -385,11 +385,10 @@ export function EmployeesPage() {
                         {isAdmin && (
                           <EditCredentialsDialog user={u} onDone={load} />
                         )}
-                        {hasFeature(FeatureCodes.EMP_EDIT_DEPT) &&
-                          !hasFeature(FeatureCodes.EMP_EDIT_ALL) && (
-                            <ManagerEditEmployeeDialog user={u} onDone={load} />
-                          )}
-                        {hasFeature(FeatureCodes.EMP_EDIT_ALL) && (
+                        {hasFeature(FeatureCodes.EMP_EDIT_DEPT) && !isAdmin && (
+                          <ManagerEditEmployeeDialog user={u} onDone={load} />
+                        )}
+                        {isAdmin && (
                           <EditUserDialog
                             user={u}
                             features={features}

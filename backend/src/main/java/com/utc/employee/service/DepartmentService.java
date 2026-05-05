@@ -57,7 +57,7 @@ public class DepartmentService {
 
     /**
      * Danh sách phòng ban cho dropdown khi tạo/sửa nhân viên.
-     * Người có quyền EMP_CREATE hoặc EMP_EDIT_ALL có thể xem danh sách này.
+     * Người có quyền EMP_CREATE có thể xem danh sách này.
      */
     @Transactional(readOnly = true)
     public List<DepartmentDto> listOptions(AuthUser current) {
@@ -69,9 +69,8 @@ public class DepartmentService {
                     .toList();
         }
         
-        // Người có quyền tạo hoặc sửa nhân viên: xem tất cả phòng ban đang hoạt động
-        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_CREATE) 
-                || accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
+        // Người có quyền tạo nhân viên: xem tất cả phòng ban đang hoạt động
+        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_CREATE)) {
             return departmentRepository.findAll().stream()
                     .filter(Department::isActive)
                     .map(this::toDto)
