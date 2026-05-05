@@ -55,6 +55,40 @@ public class DepartmentService {
                 .toList();
     }
 
+    /**
+     * Danh sách phòng ban cho dropdown khi tạo/sửa nhân viên.
+     * Người có quyền EMP_CREATE hoặc EMP_EDIT_ALL có thể xem danh sách này.
+     */
+    @Transactional(readOnly = true)
+    public List<DepartmentDto> listOptions(AuthUser current) {
+        // Admin: xem tất cả
+        if (accessPolicy.isAdmin(current)) {
+            return departmentRepository.findAll().stream()
+                    .filter(Department::isActive)
+                    .map(this::toDto)
+                    .toList();
+        }
+        
+        // Người có quyền tạo hoặc sửa nhân viên: xem tất cả phòng ban đang hoạt động
+        if (accessPolicy.hasFeature(current, FeatureCodes.EMP_CREATE) 
+                || accessPolicy.hasFeature(current, FeatureCodes.EMP_EDIT_ALL)) {
+            return departmentRepository.findAll().stream()
+                    .filter(Department::isActive)
+                    .map(this::toDto)
+                    .toList();
+        }
+        
+        // Manager: xem phòng ban của mình
+        if (accessPolicy.isManager(current) && current.departmentId() != null) {
+            Department dept = departmentRepository.findById(current.departmentId()).orElse(null);
+            if (dept != null && dept.isActive()) {
+                return List.of(toDto(dept));
+            }
+        }
+        
+        throw new ForbiddenException("Không có quyền xem danh sách phòng ban");
+    }
+
     private boolean matches(DepartmentDto d, String q, Boolean active) {
         if (active != null && d.active() != active) {
             return false;

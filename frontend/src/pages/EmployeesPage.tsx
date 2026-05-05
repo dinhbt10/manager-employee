@@ -145,7 +145,7 @@ export function EmployeesPage() {
   useEffect(() => {
     if (!hasFeature(FeatureCodes.EMP_CREATE)) return;
     void api
-      .get<Department[]>("/departments")
+      .get<Department[]>("/departments/options")
       .then((r) => setDepartments(r.data))
       .catch(() => {});
   }, [hasFeature]);

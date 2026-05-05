@@ -29,6 +29,12 @@ public class DepartmentController {
         return departmentService.list(currentUser.get(), q, active);
     }
 
+    /** Danh sách phòng ban cho dropdown (người có quyền EMP_CREATE) */
+    @GetMapping("/options")
+    public List<DepartmentDto> listOptions() {
+        return departmentService.listOptions(currentUser.get());
+    }
+
     @PostMapping
     public DepartmentDto create(@Valid @RequestBody CreateDepartmentRequest req) {
         return departmentService.create(currentUser.get(), req);
