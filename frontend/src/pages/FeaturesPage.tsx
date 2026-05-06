@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { FeatureAdmin } from "@/api/types";
-import { FeatureCodes } from "@/api/types";
-import { useAuth } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ListSearchBar } from "@/components/ListSearchBar";
 import { Pagination } from "@/components/Pagination";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -20,16 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { Eye, Layers, Pencil, Plus } from "lucide-react";
+import { Eye } from "lucide-react";
 
 export function FeaturesPage() {
-  const { hasFeature } = useAuth();
   const [rows, setRows] = useState<FeatureAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [qInput, setQInput] = useState("");
@@ -209,157 +203,6 @@ function FeatureDetailDialog({ feature: f }: { feature: FeatureAdmin }) {
             </dd>
           </div>
         </dl>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function EditFeatureDialog({ feature, onDone }: { feature: FeatureAdmin; onDone: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(feature.name);
-  const [active, setActive] = useState(feature.active);
-  const [saving, setSaving] = useState(false);
-  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
-
-  useEffect(() => {
-    setName(feature.name);
-    setActive(feature.active);
-  }, [feature]);
-
-  async function doSave() {
-    setSaving(true);
-    try {
-      await api.patch(`/features/catalog/${feature.id}`, { name: name.trim(), active });
-      toast.success("Đã cập nhật chức năng");
-      setOpen(false);
-      setConfirmDeactivate(false);
-      onDone();
-    } catch (e) {
-      toast.error(getApiErrorMessage(e));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function save() {
-    if (!name.trim()) return;
-    if (feature.active && !active) {
-      setConfirmDeactivate(true);
-      return;
-    }
-    void doSave();
-  }
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" variant="secondary">
-            <Pencil className="h-3 w-3" />
-            Sửa
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa chức năng — {feature.code}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Tên hiển thị</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
-            </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5">
-              <input
-                type="checkbox"
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-                className="size-4 rounded border-zinc-300"
-              />
-              <span className="text-sm text-zinc-800">Đang hoạt động (hiện trong danh sách gán quyền)</span>
-            </label>
-            <Button className="w-full" onClick={() => void save()} disabled={!name.trim() || saving}>
-              {saving && <Spinner />}
-              Lưu thay đổi
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <ConfirmDialog
-        open={confirmDeactivate}
-        onOpenChange={setConfirmDeactivate}
-        title="Ngưng chức năng?"
-        description="Chức năng ngưng sẽ không còn trong dropdown gán quyền; người dùng không còn quyền từ mã này cho đến khi bật lại."
-        confirmLabel="Ngưng"
-        onConfirm={() => doSave()}
-      />
-    </>
-  );
-}
-
-function CreateFeatureDialog({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    const c = code.trim();
-    const n = name.trim();
-    if (!c || !n) return;
-    setSaving(true);
-    try {
-      await api.post("/features/catalog", { code: c, name: n });
-      toast.success("Đã thêm chức năng");
-      setOpen(false);
-      setCode("");
-      setName("");
-      onDone();
-    } catch (e) {
-      toast.error(getApiErrorMessage(e));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4" />
-          Thêm chức năng
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-teal-600" />
-            Chức năng mới
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>Mã (không đổi sau khi tạo)</Label>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="VD: EMP_REPORT"
-              className="mt-1 font-mono"
-            />
-            <p className="mt-1 text-xs text-zinc-500">Chữ cái đầu, sau đó chữ số hoặc gạch dưới (2–64 ký tự).</p>
-          </div>
-          <div>
-            <Label>Tên hiển thị</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Báo cáo nhân viên" />
-          </div>
-          <Button
-            className="w-full"
-            onClick={() => void save()}
-            disabled={!code.trim() || !name.trim() || saving}
-          >
-            {saving && <Spinner />}
-            Lưu
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );

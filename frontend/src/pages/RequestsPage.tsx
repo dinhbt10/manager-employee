@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 import type {
   Department,
-  FeatureOption,
   LoginResponse,
   PermissionRequest,
   User,
@@ -155,7 +154,6 @@ export function RequestsPage() {
   const { user, hasFeature } = useAuth();
   const [rows, setRows] = useState<PermissionRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,10 +192,9 @@ export function RequestsPage() {
     async function run() {
       try {
         const params = buildRequestParams(tab, applied);
-        const [r, u, f] = await Promise.all([
+        const [r, u] = await Promise.all([
           api.get<PermissionRequest[]>("/requests", { params }),
           api.get<User[]>("/users"),
-          api.get<FeatureOption[]>("/features"),
         ]);
         if (cancelled) return;
         if (key !== loadKeyRef.current) return;
@@ -205,7 +202,6 @@ export function RequestsPage() {
         const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
         setRows(sortedRows);
         setUsers(u.data);
-        setFeatures(f.data);
         setLoadedKey(loadKeyRef.current);
       } catch (e) {
         if (key !== loadKeyRef.current) return;
@@ -225,17 +221,15 @@ export function RequestsPage() {
     const key = loadKey;
     try {
       const params = buildRequestParams(tab, applied);
-      const [r, u, f] = await Promise.all([
+      const [r, u] = await Promise.all([
         api.get<PermissionRequest[]>("/requests", { params }),
         api.get<User[]>("/users"),
-        api.get<FeatureOption[]>("/features"),
       ]);
       if (key !== loadKeyRef.current) return;
       // Sort từ mới nhất (id giảm dần)
       const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
       setRows(sortedRows);
       setUsers(u.data);
-      setFeatures(f.data);
     } catch (e) {
       if (key === loadKeyRef.current) {
         toast.error(getApiErrorMessage(e, "Không tải được dữ liệu request"));
@@ -297,7 +291,6 @@ export function RequestsPage() {
         actions={
           <CreateRequestDialog
             users={users}
-            features={features}
             onCreated={refreshList}
           />
         }
@@ -420,11 +413,6 @@ export function RequestsPage() {
                     onChange={(e) => setAdvFeat(e.target.value)}
                   >
                     <option value="">Tất cả</option>
-                    {features.map((f) => (
-                      <option key={f.code} value={f.code}>
-                        {f.name} ({f.code})
-                      </option>
-                    ))}
                   </select>
                 </div>
                 <Button
@@ -480,7 +468,6 @@ export function RequestsPage() {
                 mode={tab}
                 user={user}
                 users={users}
-                features={features}
                 onAction={refreshList}
                 emptyMessage={emptyHint}
                 hasFeature={hasFeature}
@@ -504,7 +491,6 @@ type TableProps = {
   mode: "draft" | "pending" | "approved";
   user: LoginResponse | null;
   users: User[];
-  features: FeatureOption[];
   onAction: () => void;
   emptyMessage: string;
   hasFeature: (code: FeatureCode) => boolean;
@@ -521,7 +507,6 @@ function RequestTable({
   mode,
   user,
   users,
-  features,
   onAction,
   emptyMessage,
   hasFeature,
@@ -681,7 +666,6 @@ function RequestTable({
                           <EditRequestDialog
                             request={r}
                             users={users}
-                            features={features}
                             onDone={onAction}
                           />
                         </span>
@@ -989,12 +973,10 @@ function RequestDetailDialog({
 function EditRequestDialog({
   request,
   users,
-  features,
   onDone,
 }: {
   request: PermissionRequest;
   users: User[];
-  features: FeatureOption[];
   onDone: () => void;
 }) {
   const { user: authUser } = useAuth();
@@ -1006,7 +988,7 @@ function EditRequestDialog({
   const [targetUserId, setTargetUserId] = useState<number>(
     request.targetUserId,
   );
-  const [selected, setSelected] = useState<Set<string>>(
+  const [selected] = useState<Set<string>>(
     () => new Set(request.requestedFeatureCodes),
   );
   const [saving, setSaving] = useState(false);
@@ -1016,27 +998,7 @@ function EditRequestDialog({
     setTitle(request.title);
     setDescription(request.description ?? "");
     setTargetUserId(request.targetUserId);
-    setSelected(new Set(request.requestedFeatureCodes));
   }, [request]);
-
-  const featureOptions = useMemo(() => {
-    const byCode = new Map(features.map((f) => [f.code, f]));
-    for (const code of request.requestedFeatureCodes) {
-      if (!byCode.has(code)) {
-        byCode.set(code, { code, name: `${code} (đã ngưng)` });
-      }
-    }
-    return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
-  }, [features, request.requestedFeatureCodes]);
-
-  function toggleFeat(code: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(code)) n.delete(code);
-      else n.add(code);
-      return n;
-    });
-  }
 
   const isFormValid = title.trim();
 
@@ -1044,13 +1006,8 @@ function EditRequestDialog({
     if (!isFormValid) return;
     setSaving(true);
     try {
-      const activeCodes = new Set(features.map((f) => f.code));
-      const requestedFeatureCodes = [...selected].filter((code) =>
-        activeCodes.has(code),
-      );
-      const droppedInactive = [...selected].filter(
-        (code) => !activeCodes.has(code),
-      );
+      const requestedFeatureCodes = [...selected];
+      const droppedInactive: string[] = [];
       if (droppedInactive.length > 0) {
         toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi request.`);
       }
@@ -1070,7 +1027,6 @@ function EditRequestDialog({
       setTitle(request.title);
       setDescription(request.description ?? "");
       setTargetUserId(request.targetUserId);
-      setSelected(new Set(request.requestedFeatureCodes));
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1083,13 +1039,8 @@ function EditRequestDialog({
     if (!isFormValid) return;
     setSubmitting(true);
     try {
-      const activeCodes = new Set(features.map((f) => f.code));
-      const requestedFeatureCodes = [...selected].filter((code) =>
-        activeCodes.has(code),
-      );
-      const droppedInactive = [...selected].filter(
-        (code) => !activeCodes.has(code),
-      );
+      const requestedFeatureCodes = [...selected];
+      const droppedInactive: string[] = [];
       if (droppedInactive.length > 0) {
         toast.info(`Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi request.`);
       }
@@ -1116,7 +1067,6 @@ function EditRequestDialog({
       setTitle(request.title);
       setDescription(request.description ?? "");
       setTargetUserId(request.targetUserId);
-      setSelected(new Set(request.requestedFeatureCodes));
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1135,7 +1085,6 @@ function EditRequestDialog({
           setTitle(request.title);
           setDescription(request.description ?? "");
           setTargetUserId(request.targetUserId);
-          setSelected(new Set(request.requestedFeatureCodes));
         }
       }}
     >
@@ -1219,11 +1168,9 @@ function EditRequestDialog({
 
 function CreateRequestDialog({
   users,
-  features,
   onCreated,
 }: {
   users: User[];
-  features: FeatureOption[];
   onCreated: () => void;
 }) {
   const { user: authUser } = useAuth();
@@ -1231,7 +1178,7 @@ function CreateRequestDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [targetUserId, setTargetUserId] = useState<number | "">("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1245,15 +1192,6 @@ function CreateRequestDialog({
       setTargetUserId(selfId);
     }
   }, [open, isEmployee, authUser?.userId, users]);
-
-  function toggleFeat(code: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(code)) n.delete(code);
-      else n.add(code);
-      return n;
-    });
-  }
 
   const isFormValid = title.trim() && targetUserId !== "";
 
@@ -1272,7 +1210,6 @@ function CreateRequestDialog({
       setTitle("");
       setDescription("");
       setTargetUserId("");
-      setSelected(new Set());
       onCreated();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1302,7 +1239,6 @@ function CreateRequestDialog({
       setTitle("");
       setDescription("");
       setTargetUserId("");
-      setSelected(new Set());
       onCreated();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1320,7 +1256,6 @@ function CreateRequestDialog({
           setTitle("");
           setDescription("");
           setTargetUserId("");
-          setSelected(new Set());
         }
       }}
     >

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
-import type { Department, FeatureOption, Role, User } from "@/api/types";
+import type { Department, Role, User } from "@/api/types";
 import { FeatureCodes } from "@/api/types";
 import { useAuth, roleLabel } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
@@ -38,7 +38,7 @@ import { Eye, Pencil, UserPlus, Download, Key } from "lucide-react";
  * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
  * Chỉ EMPLOYEE (và trường hợp có gán thêm) mới hiển thị đúng danh sách mã trong `user_features`.
  */
-function permissionBadges(user: User, labelByCode: Map<string, string>) {
+function permissionBadges(user: User) {
   if (user.role === "ADMIN") {
     return (
       <Badge
@@ -65,27 +65,25 @@ function permissionBadges(user: User, labelByCode: Map<string, string>) {
     );
   }
   return user.features.map((c) => (
-    <Badge key={c} variant="secondary" className="text-xs">
-      {labelByCode.get(c) ?? c}
+    <Badge key={c} variant="secondary" className="font-mono text-xs">
+      {c}
     </Badge>
   ));
 }
 
-function permissionTooltip(user: User, labelByCode: Map<string, string>): string {
+function permissionTooltip(user: User): string {
   if (user.role === "ADMIN") {
     return "Quản trị viên — toàn quyền (không cần gán từng chức năng trong DB)";
   }
   if (user.role === "MANAGER" && user.features.length === 0) {
     return "Quản lý — đủ quyền với nhân viên thuộc phòng ban của mình";
   }
-  const labels = user.features.map((c) => labelByCode.get(c) ?? c);
-  return labels.join(", ") || "Chỉ xem (chưa cấp chức năng)";
+  return user.features.join(", ") || "Chỉ xem (chưa cấp chức năng)";
 }
 
 export function EmployeesPage() {
   const { hasFeature, user: currentUser } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
-  const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailUser, setDetailUser] = useState<User | null>(null);
@@ -110,12 +108,6 @@ export function EmployeesPage() {
     role: "",
   });
 
-  const featureLabelByCode = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const f of features) m.set(f.code, f.name);
-    return m;
-  }, [features]);
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -125,12 +117,8 @@ export function EmployeesPage() {
       if (applied.departmentId != null)
         params.departmentId = applied.departmentId;
 
-      const [u, f] = await Promise.all([
-        api.get<User[]>("/users", { params }),
-        api.get<FeatureOption[]>("/features"),
-      ]);
+      const u = await api.get<User[]>("/users", { params });
       setRows(u.data);
-      setFeatures(f.data);
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Không tải được danh sách nhân viên"));
     } finally {
@@ -227,7 +215,6 @@ export function EmployeesPage() {
             {hasFeature(FeatureCodes.EMP_CREATE) && (
               <CreateUserDialog
                 departments={departments}
-                features={features}
                 onDone={load}
               />
             )}
@@ -363,9 +350,9 @@ export function EmployeesPage() {
                     <TableCell className="max-w-[240px]">
                       <div
                         className="flex flex-wrap gap-1"
-                        title={permissionTooltip(u, featureLabelByCode)}
+                        title={permissionTooltip(u)}
                       >
-                        {permissionBadges(u, featureLabelByCode)}
+                        {permissionBadges(u)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -391,7 +378,6 @@ export function EmployeesPage() {
                         {isAdmin && (
                           <EditUserDialog
                             user={u}
-                            features={features}
                             onDone={load}
                           />
                         )}
@@ -419,7 +405,6 @@ export function EmployeesPage() {
         user={detailUser}
         open={detailUser !== null}
         onOpenChange={(o) => !o && setDetailUser(null)}
-        featureLabelByCode={featureLabelByCode}
       />
     </div>
   );
@@ -429,12 +414,10 @@ function EmployeeDetailDialog({
   user,
   open,
   onOpenChange,
-  featureLabelByCode,
 }: {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  featureLabelByCode: Map<string, string>;
 }) {
   if (!user) return null;
   return (
@@ -523,7 +506,7 @@ function EmployeeDetailDialog({
               Chức năng đã cấp
             </dt>
             <dd className="mt-1.5 flex flex-wrap gap-1">
-              {permissionBadges(user, featureLabelByCode)}
+              {permissionBadges(user)}
             </dd>
           </div>
         </dl>
@@ -601,16 +584,14 @@ function ManagerEditEmployeeDialog({
 
 function EditUserDialog({
   user,
-  features,
   onDone,
 }: {
   user: User;
-  features: FeatureOption[];
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
-  const [selected, setSelected] = useState<Set<string>>(
+  const [selected] = useState<Set<string>>(
     () => new Set(user.features),
   );
   const [gender, setGender] = useState(user.gender || "");
@@ -622,32 +603,12 @@ function EditUserDialog({
 
   useEffect(() => {
     setFullName(user.fullName);
-    setSelected(new Set(user.features));
     setGender(user.gender || "");
     setDateOfBirth(user.dateOfBirth || "");
     setAddress(user.address || "");
     setNationality(user.nationality || "");
     setCitizenId(user.citizenId || "");
-  }, [user.features, user.fullName, user.id, user.gender, user.dateOfBirth, user.address, user.nationality, user.citizenId]);
-
-  const featureOptions = useMemo(() => {
-    const byCode = new Map(features.map((f) => [f.code, f]));
-    for (const code of user.features) {
-      if (!byCode.has(code)) {
-        byCode.set(code, { code, name: `${code} (đã ngưng)` });
-      }
-    }
-    return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
-  }, [features, user.features]);
-
-  function toggle(code: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(code)) n.delete(code);
-      else n.add(code);
-      return n;
-    });
-  }
+  }, [user.fullName, user.id, user.gender, user.dateOfBirth, user.address, user.nationality, user.citizenId]);
 
   async function save() {
     setSaving(true);
@@ -663,18 +624,7 @@ function EditUserDialog({
         });
         toast.success("Đã cập nhật nhân viên");
       } else {
-        const activeCodes = new Set(features.map((f) => f.code));
-        const featureCodes = [...selected].filter((code) =>
-          activeCodes.has(code),
-        );
-        const droppedInactive = [...selected].filter(
-          (code) => !activeCodes.has(code),
-        );
-        if (droppedInactive.length > 0) {
-          toast.info(
-            `Đã gỡ ${droppedInactive.length} mã đã ngưng khỏi phân quyền.`,
-          );
-        }
+        const featureCodes = [...selected];
         await api.patch(`/users/${user.id}`, {
           fullName: fullName.trim(),
           featureCodes,
@@ -901,11 +851,9 @@ function EditCredentialsDialog({
 
 function CreateUserDialog({
   departments,
-  features,
   onDone,
 }: {
   departments: Department[];
-  features: FeatureOption[];
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -914,22 +862,13 @@ function CreateUserDialog({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"EMPLOYEE" | "MANAGER">("EMPLOYEE");
   const [departmentId, setDepartmentId] = useState<number | "">("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected] = useState<Set<string>>(new Set());
   const [gender, setGender] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
   const [nationality, setNationality] = useState("");
   const [citizenId, setCitizenId] = useState("");
   const [saving, setSaving] = useState(false);
-
-  function toggle(code: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(code)) n.delete(code);
-      else n.add(code);
-      return n;
-    });
-  }
 
   async function save() {
     setSaving(true);
@@ -953,7 +892,6 @@ function CreateUserDialog({
       setUsername("");
       setPassword("");
       setDepartmentId("");
-      setSelected(new Set());
       setGender("");
       setDateOfBirth("");
       setAddress("");
@@ -978,7 +916,6 @@ function CreateUserDialog({
           setPassword("");
           setRole("EMPLOYEE");
           setDepartmentId("");
-          setSelected(new Set());
           setGender("");
           setDateOfBirth("");
           setAddress("");
