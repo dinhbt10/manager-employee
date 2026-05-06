@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 import type {
   Department,
+  FeatureOption,
   LoginResponse,
   PermissionRequest,
   User,
@@ -154,6 +155,7 @@ export function RequestsPage() {
   const { user, hasFeature } = useAuth();
   const [rows, setRows] = useState<PermissionRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -192,16 +194,20 @@ export function RequestsPage() {
     async function run() {
       try {
         const params = buildRequestParams(tab, applied);
-        const [r, u] = await Promise.all([
+        const [r, u, f] = await Promise.all([
           api.get<PermissionRequest[]>("/requests", { params }),
           api.get<User[]>("/users"),
+          api.get<FeatureOption[]>("/features"),
         ]);
         if (cancelled) return;
         if (key !== loadKeyRef.current) return;
         // Sort từ mới nhất (id giảm dần)
         const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
+        // Lọc bỏ các feature liên quan đến FEATURE_*
+        const filteredFeatures = f.data.filter(feat => !feat.code.startsWith('FEATURE_'));
         setRows(sortedRows);
         setUsers(u.data);
+        setFeatures(filteredFeatures);
         setLoadedKey(loadKeyRef.current);
       } catch (e) {
         if (key !== loadKeyRef.current) return;
@@ -221,15 +227,19 @@ export function RequestsPage() {
     const key = loadKey;
     try {
       const params = buildRequestParams(tab, applied);
-      const [r, u] = await Promise.all([
+      const [r, u, f] = await Promise.all([
         api.get<PermissionRequest[]>("/requests", { params }),
         api.get<User[]>("/users"),
+        api.get<FeatureOption[]>("/features"),
       ]);
       if (key !== loadKeyRef.current) return;
       // Sort từ mới nhất (id giảm dần)
       const sortedRows = [...r.data].sort((a, b) => b.id - a.id);
+      // Lọc bỏ các feature liên quan đến FEATURE_*
+      const filteredFeatures = f.data.filter(feat => !feat.code.startsWith('FEATURE_'));
       setRows(sortedRows);
       setUsers(u.data);
+      setFeatures(filteredFeatures);
     } catch (e) {
       if (key === loadKeyRef.current) {
         toast.error(getApiErrorMessage(e, "Không tải được dữ liệu request"));
@@ -291,6 +301,7 @@ export function RequestsPage() {
         actions={
           <CreateRequestDialog
             users={users}
+            features={features}
             onCreated={refreshList}
           />
         }
@@ -413,6 +424,11 @@ export function RequestsPage() {
                     onChange={(e) => setAdvFeat(e.target.value)}
                   >
                     <option value="">Tất cả</option>
+                    {features.map((f) => (
+                      <option key={f.code} value={f.code}>
+                        {f.name} ({f.code})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <Button
@@ -468,6 +484,7 @@ export function RequestsPage() {
                 mode={tab}
                 user={user}
                 users={users}
+                features={features}
                 onAction={refreshList}
                 emptyMessage={emptyHint}
                 hasFeature={hasFeature}
@@ -491,6 +508,7 @@ type TableProps = {
   mode: "draft" | "pending" | "approved";
   user: LoginResponse | null;
   users: User[];
+  features: FeatureOption[];
   onAction: () => void;
   emptyMessage: string;
   hasFeature: (code: FeatureCode) => boolean;
@@ -507,6 +525,7 @@ function RequestTable({
   mode,
   user,
   users,
+  features,
   onAction,
   emptyMessage,
   hasFeature,
@@ -666,6 +685,7 @@ function RequestTable({
                           <EditRequestDialog
                             request={r}
                             users={users}
+                            features={features}
                             onDone={onAction}
                           />
                         </span>
@@ -973,10 +993,12 @@ function RequestDetailDialog({
 function EditRequestDialog({
   request,
   users,
+  features,
   onDone,
 }: {
   request: PermissionRequest;
   users: User[];
+  features: FeatureOption[];
   onDone: () => void;
 }) {
   const { user: authUser } = useAuth();
@@ -988,7 +1010,7 @@ function EditRequestDialog({
   const [targetUserId, setTargetUserId] = useState<number>(
     request.targetUserId,
   );
-  const [selected] = useState<Set<string>>(
+  const [selected, setSelected] = useState<Set<string>>(
     () => new Set(request.requestedFeatureCodes),
   );
   const [saving, setSaving] = useState(false);
@@ -998,9 +1020,29 @@ function EditRequestDialog({
     setTitle(request.title);
     setDescription(request.description ?? "");
     setTargetUserId(request.targetUserId);
+    setSelected(new Set(request.requestedFeatureCodes));
   }, [request]);
 
-  const isFormValid = title.trim();
+  const featureOptions = useMemo(() => {
+    const byCode = new Map(features.map((f) => [f.code, f]));
+    for (const code of request.requestedFeatureCodes) {
+      if (!byCode.has(code)) {
+        byCode.set(code, { code, name: `${code} (đã ngưng)` });
+      }
+    }
+    return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
+  }, [features, request.requestedFeatureCodes]);
+
+  function toggleFeat(code: string) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(code)) n.delete(code);
+      else n.add(code);
+      return n;
+    });
+  }
+
+  const isFormValid = title.trim() && selected.size > 0;
 
   async function saveDraft() {
     if (!isFormValid) return;
@@ -1027,6 +1069,7 @@ function EditRequestDialog({
       setTitle(request.title);
       setDescription(request.description ?? "");
       setTargetUserId(request.targetUserId);
+      setSelected(new Set(request.requestedFeatureCodes));
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1067,6 +1110,7 @@ function EditRequestDialog({
       setTitle(request.title);
       setDescription(request.description ?? "");
       setTargetUserId(request.targetUserId);
+      setSelected(new Set(request.requestedFeatureCodes));
       onDone();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1085,6 +1129,7 @@ function EditRequestDialog({
           setTitle(request.title);
           setDescription(request.description ?? "");
           setTargetUserId(request.targetUserId);
+          setSelected(new Set(request.requestedFeatureCodes));
         }
       }}
     >
@@ -1141,6 +1186,28 @@ function EditRequestDialog({
               ))}
             </select>
           </div>
+          <div>
+            <Label>Chức năng (multi-select)</Label>
+            <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+              {featureOptions.map((f) => (
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.code)}
+                    onChange={() => toggleFeat(f.code)}
+                    className="rounded border-zinc-300"
+                  />
+                  <span className="text-zinc-800">{f.name}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button
               className="flex-1"
@@ -1168,9 +1235,11 @@ function EditRequestDialog({
 
 function CreateRequestDialog({
   users,
+  features,
   onCreated,
 }: {
   users: User[];
+  features: FeatureOption[];
   onCreated: () => void;
 }) {
   const { user: authUser } = useAuth();
@@ -1178,7 +1247,7 @@ function CreateRequestDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [targetUserId, setTargetUserId] = useState<number | "">("");
-  const [selected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1193,7 +1262,16 @@ function CreateRequestDialog({
     }
   }, [open, isEmployee, authUser?.userId, users]);
 
-  const isFormValid = title.trim() && targetUserId !== "";
+  function toggleFeat(code: string) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(code)) n.delete(code);
+      else n.add(code);
+      return n;
+    });
+  }
+
+  const isFormValid = title.trim() && targetUserId !== "" && selected.size > 0;
 
   async function createDraft() {
     if (!isFormValid) return;
@@ -1210,6 +1288,7 @@ function CreateRequestDialog({
       setTitle("");
       setDescription("");
       setTargetUserId("");
+      setSelected(new Set());
       onCreated();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1239,6 +1318,7 @@ function CreateRequestDialog({
       setTitle("");
       setDescription("");
       setTargetUserId("");
+      setSelected(new Set());
       onCreated();
     } catch (e) {
       toast.error(getApiErrorMessage(e));
@@ -1256,6 +1336,7 @@ function CreateRequestDialog({
           setTitle("");
           setDescription("");
           setTargetUserId("");
+          setSelected(new Set());
         }
       }}
     >
@@ -1311,6 +1392,28 @@ function CreateRequestDialog({
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <Label>Chức năng (multi-select)</Label>
+            <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+              {features.map((f) => (
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.code)}
+                    onChange={() => toggleFeat(f.code)}
+                    className="rounded border-zinc-300"
+                  />
+                  <span className="text-zinc-800">{f.name}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button

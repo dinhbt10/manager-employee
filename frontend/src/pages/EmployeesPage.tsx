@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
-import type { Department, Role, User } from "@/api/types";
+import type { Department, FeatureOption, Role, User } from "@/api/types";
 import { FeatureCodes } from "@/api/types";
 import { useAuth, roleLabel } from "@/auth/AuthContext";
 import { CellWithTooltip } from "@/components/CellWithTooltip";
@@ -38,7 +38,7 @@ import { Eye, Pencil, UserPlus, Download, Key } from "lucide-react";
  * ADMIN / MANAGER có quyền theo vai trò (AccessPolicy) dù `user.features` từ DB có thể rỗng.
  * Chỉ EMPLOYEE (và trường hợp có gán thêm) mới hiển thị đúng danh sách mã trong `user_features`.
  */
-function permissionBadges(user: User) {
+function permissionBadges(user: User, labelByCode: Map<string, string>) {
   if (user.role === "ADMIN") {
     return (
       <Badge
@@ -65,25 +65,27 @@ function permissionBadges(user: User) {
     );
   }
   return user.features.map((c) => (
-    <Badge key={c} variant="secondary" className="font-mono text-xs">
-      {c}
+    <Badge key={c} variant="secondary" className="text-xs">
+      {labelByCode.get(c) ?? c}
     </Badge>
   ));
 }
 
-function permissionTooltip(user: User): string {
+function permissionTooltip(user: User, labelByCode: Map<string, string>): string {
   if (user.role === "ADMIN") {
     return "Quản trị viên — toàn quyền (không cần gán từng chức năng trong DB)";
   }
   if (user.role === "MANAGER" && user.features.length === 0) {
     return "Quản lý — đủ quyền với nhân viên thuộc phòng ban của mình";
   }
-  return user.features.join(", ") || "Chỉ xem (chưa cấp chức năng)";
+  const labels = user.features.map((c) => labelByCode.get(c) ?? c);
+  return labels.join(", ") || "Chỉ xem (chưa cấp chức năng)";
 }
 
 export function EmployeesPage() {
   const { hasFeature, user: currentUser } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
+  const [features, setFeatures] = useState<FeatureOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailUser, setDetailUser] = useState<User | null>(null);
@@ -108,6 +110,12 @@ export function EmployeesPage() {
     role: "",
   });
 
+  const featureLabelByCode = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of features) m.set(f.code, f.name);
+    return m;
+  }, [features]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -117,8 +125,14 @@ export function EmployeesPage() {
       if (applied.departmentId != null)
         params.departmentId = applied.departmentId;
 
-      const u = await api.get<User[]>("/users", { params });
+      const [u, f] = await Promise.all([
+        api.get<User[]>("/users", { params }),
+        api.get<FeatureOption[]>("/features"),
+      ]);
+      // Lọc bỏ các feature liên quan đến FEATURE_*
+      const filteredFeatures = f.data.filter(feat => !feat.code.startsWith('FEATURE_'));
       setRows(u.data);
+      setFeatures(filteredFeatures);
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Không tải được danh sách nhân viên"));
     } finally {
@@ -350,9 +364,9 @@ export function EmployeesPage() {
                     <TableCell className="max-w-[240px]">
                       <div
                         className="flex flex-wrap gap-1"
-                        title={permissionTooltip(u)}
+                        title={permissionTooltip(u, featureLabelByCode)}
                       >
-                        {permissionBadges(u)}
+                        {permissionBadges(u, featureLabelByCode)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -405,6 +419,7 @@ export function EmployeesPage() {
         user={detailUser}
         open={detailUser !== null}
         onOpenChange={(o) => !o && setDetailUser(null)}
+        featureLabelByCode={featureLabelByCode}
       />
     </div>
   );
@@ -414,10 +429,12 @@ function EmployeeDetailDialog({
   user,
   open,
   onOpenChange,
+  featureLabelByCode,
 }: {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  featureLabelByCode: Map<string, string>;
 }) {
   if (!user) return null;
   return (
@@ -506,7 +523,7 @@ function EmployeeDetailDialog({
               Chức năng đã cấp
             </dt>
             <dd className="mt-1.5 flex flex-wrap gap-1">
-              {permissionBadges(user)}
+              {permissionBadges(user, featureLabelByCode)}
             </dd>
           </div>
         </dl>
