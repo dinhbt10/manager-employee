@@ -8,20 +8,11 @@ import { Pagination } from "@/components/Pagination";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { Eye } from "lucide-react";
 
 export function FeaturesPage() {
   const [rows, setRows] = useState<FeatureAdmin[]>([]);
@@ -42,7 +33,14 @@ export function FeaturesPage() {
       if (applied.q.trim()) params.q = applied.q.trim();
       if (applied.active !== undefined) params.active = applied.active;
       const r = await api.get<FeatureAdmin[]>("/features/catalog", { params });
-      setRows(r.data);
+      // Lọc bỏ các feature liên quan đến quản lý chức năng
+      const filtered = r.data.filter(f => 
+        !f.code.startsWith('FEATURE_') && 
+        f.code !== 'FEATURE_CREATE' && 
+        f.code !== 'FEATURE_EDIT' && 
+        f.code !== 'FEATURE_VIEW'
+      );
+      setRows(filtered);
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Không tải được danh mục chức năng"));
     } finally {
@@ -128,7 +126,6 @@ export function FeaturesPage() {
                   <TableHead>Mã</TableHead>
                   <TableHead>Tên hiển thị</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -144,11 +141,6 @@ export function FeaturesPage() {
                       <Badge variant={f.active ? "success" : "destructive"}>
                         {f.active ? "Hoạt động" : "Ngưng"}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <FeatureDetailDialog feature={f} />
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -168,42 +160,5 @@ export function FeaturesPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function FeatureDetailDialog({ feature: f }: { feature: FeatureAdmin }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="text-zinc-700">
-          <Eye className="h-3.5 w-3.5" />
-          Chi tiết
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Chi tiết chức năng</DialogTitle>
-        </DialogHeader>
-        <dl className="space-y-3 text-sm">
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Mã</dt>
-            <dd className="mt-0.5 font-mono text-brand-800">{f.code}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Tên</dt>
-            <dd className="mt-0.5 text-zinc-900">{f.name}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Trạng thái</dt>
-            <dd className="mt-1.5">
-              <Badge variant={f.active ? "success" : "destructive"}>
-                {f.active ? "Hoạt động" : "Ngưng"}
-              </Badge>
-            </dd>
-          </div>
-        </dl>
-      </DialogContent>
-    </Dialog>
   );
 }
