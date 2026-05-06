@@ -1148,21 +1148,21 @@ function CreateUserDialog({
               ))}
             </div>
           </div>
-          <Button
-            className="w-full border-t pt-4"
-            onClick={() => void save()}
-            disabled={
-              !fullName.trim() ||
-              !username.trim() ||
-              !password ||
-              departmentId === "" ||
-              saving
-            }
-          >
-            {saving && <Spinner />}
-            Tạo
-          </Button>
         </div>
+        <Button
+          className="w-full border-t pt-4"
+          onClick={() => void save()}
+          disabled={
+            !fullName.trim() ||
+            !username.trim() ||
+            !password ||
+            departmentId === "" ||
+            saving
+          }
+        >
+          {saving && <Spinner />}
+          Tạo
+        </Button>
       </DialogContent>
     </Dialog>
   );
