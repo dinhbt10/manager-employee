@@ -1143,11 +1143,11 @@ function EditRequestDialog({
           Sửa
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Chỉnh sửa request</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-1">
           <div>
             <Label>Tiêu đề</Label>
             <Input
@@ -1208,25 +1208,25 @@ function EditRequestDialog({
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onClick={() => void saveDraft()}
-              disabled={!isFormValid || saving}
-            >
-              {saving && <Spinner />}
-              Lưu nháp
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => void submitForApproval()}
-              disabled={!isFormValid || submitting}
-            >
-              {submitting && <Spinner />}
-              Gửi duyệt
-            </Button>
-          </div>
+        </div>
+        <div className="flex gap-2 border-t pt-4">
+          <Button
+            className="flex-1"
+            variant="secondary"
+            onClick={() => void saveDraft()}
+            disabled={!isFormValid || saving}
+          >
+            {saving && <Spinner />}
+            Lưu nháp
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => void submitForApproval()}
+            disabled={!isFormValid || submitting}
+          >
+            {submitting && <Spinner />}
+            Gửi duyệt
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -1346,11 +1346,11 @@ function CreateRequestDialog({
           Tạo request
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Tạo request cấp quyền</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-1">
           <div>
             <Label>Tiêu đề</Label>
             <Input
@@ -1415,25 +1415,25 @@ function CreateRequestDialog({
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onClick={() => void createDraft()}
-              disabled={!isFormValid || saving}
-            >
-              {saving && <Spinner />}
-              Lưu nháp
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => void createAndSubmit()}
-              disabled={!isFormValid || submitting}
-            >
-              {submitting && <Spinner />}
-              Gửi duyệt
-            </Button>
-          </div>
+        </div>
+        <div className="flex gap-2 border-t pt-4">
+          <Button
+            className="flex-1"
+            variant="secondary"
+            onClick={() => void createDraft()}
+            disabled={!isFormValid || saving}
+          >
+            {saving && <Spinner />}
+            Lưu nháp
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => void createAndSubmit()}
+            disabled={!isFormValid || submitting}
+          >
+            {submitting && <Spinner />}
+            Gửi duyệt
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -441,11 +441,11 @@ function EmployeeDetailDialog({
   if (!user) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">Chi tiết nhân viên</DialogTitle>
         </DialogHeader>
-        <dl className="space-y-3 text-sm">
+        <dl className="flex-1 space-y-3 overflow-y-auto px-1 text-sm">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Mã NV
@@ -698,7 +698,7 @@ function EditUserDialog({
           Phân quyền
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Phân quyền — {user.fullName}</DialogTitle>
         </DialogHeader>
@@ -716,7 +716,7 @@ function EditUserDialog({
             </>
           )}
         </p>
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-1">
           <div>
             <Label>Họ tên</Label>
             <Input
@@ -802,7 +802,7 @@ function EditUserDialog({
           )}
         </div>
         <Button
-          className="w-full"
+          className="w-full border-t pt-4"
           onClick={() => void save()}
           disabled={!fullName.trim() || saving}
         >
@@ -1006,11 +1006,11 @@ function CreateUserDialog({
           Thêm nhân viên
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Thêm nhân viên (Admin)</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-1">
           <div>
             <Label>Họ tên *</Label>
             <Input
@@ -1149,7 +1149,7 @@ function CreateUserDialog({
             </div>
           </div>
           <Button
-            className="w-full"
+            className="w-full border-t pt-4"
             onClick={() => void save()}
             disabled={
               !fullName.trim() ||
