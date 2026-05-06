@@ -13,7 +13,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { DepartmentsPage } from "@/pages/DepartmentsPage";
 import { EmployeesPage } from "@/pages/EmployeesPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { FeaturesPage } from "@/pages/FeaturesPage";
 import { RequestsPage } from "@/pages/RequestsPage";
 
 function RequireAuth() {
@@ -45,14 +44,7 @@ function RequireDeptView() {
   return <Outlet />;
 }
 
-/** Danh mục chức năng — FEATURE_VIEW. */
-function RequireFeatureCatalogView() {
-  const { hasFeature } = useAuth();
-  if (!hasFeature(FeatureCodes.FEATURE_VIEW)) {
-    return <Navigate to="/requests" replace />;
-  }
-  return <Outlet />;
-}
+
 
 function AppRoutes() {
   return (
@@ -67,9 +59,6 @@ function AppRoutes() {
           </Route>
           <Route element={<RequireDeptView />}>
             <Route path="/departments" element={<DepartmentsPage />} />
-          </Route>
-          <Route element={<RequireFeatureCatalogView />}>
-            <Route path="/features" element={<FeaturesPage />} />
           </Route>
         </Route>
       </Route>

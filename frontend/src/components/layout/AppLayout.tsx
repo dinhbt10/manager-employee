@@ -4,7 +4,6 @@ import {
   Building2,
   ClipboardList,
   LayoutDashboard,
-  Layers,
   LogOut,
   Users,
 } from "lucide-react";
@@ -43,7 +42,6 @@ export function AppLayout() {
     hasFeature(FeatureCodes.EMP_VIEW_ALL) ||
     hasFeature(FeatureCodes.EMP_VIEW_DEPT);
   const canSeeDepartments = hasFeature(FeatureCodes.DEPT_VIEW);
-  const canSeeFeatures = hasFeature(FeatureCodes.FEATURE_VIEW);
 
   return (
     <div className="flex min-h-screen">
@@ -107,22 +105,6 @@ export function AppLayout() {
             >
               <Building2 className="h-4 w-4 shrink-0 text-amber-600" />
               Phòng ban
-            </NavLink>
-          )}
-          {canSeeFeatures && (
-            <NavLink
-              to="/features"
-              className={({ isActive }) =>
-                cn(
-                  navBase,
-                  isActive
-                    ? "border-teal-200 bg-teal-50/90 font-semibold text-teal-950 shadow-sm"
-                    : "text-zinc-600 hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900",
-                )
-              }
-            >
-              <Layers className="h-4 w-4 shrink-0 text-teal-600" />
-              Chức năng
             </NavLink>
           )}
         </nav>
