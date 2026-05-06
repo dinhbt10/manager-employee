@@ -229,6 +229,7 @@ export function EmployeesPage() {
             {hasFeature(FeatureCodes.EMP_CREATE) && (
               <CreateUserDialog
                 departments={departments}
+                features={features}
                 onDone={load}
               />
             )}
@@ -392,6 +393,7 @@ export function EmployeesPage() {
                         {isAdmin && (
                           <EditUserDialog
                             user={u}
+                            features={features}
                             onDone={load}
                           />
                         )}
@@ -601,14 +603,16 @@ function ManagerEditEmployeeDialog({
 
 function EditUserDialog({
   user,
+  features,
   onDone,
 }: {
   user: User;
+  features: FeatureOption[];
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
-  const [selected] = useState<Set<string>>(
+  const [selected, setSelected] = useState<Set<string>>(
     () => new Set(user.features),
   );
   const [gender, setGender] = useState(user.gender || "");
@@ -620,12 +624,32 @@ function EditUserDialog({
 
   useEffect(() => {
     setFullName(user.fullName);
+    setSelected(new Set(user.features));
     setGender(user.gender || "");
     setDateOfBirth(user.dateOfBirth || "");
     setAddress(user.address || "");
     setNationality(user.nationality || "");
     setCitizenId(user.citizenId || "");
-  }, [user.fullName, user.id, user.gender, user.dateOfBirth, user.address, user.nationality, user.citizenId]);
+  }, [user.features, user.fullName, user.id, user.gender, user.dateOfBirth, user.address, user.nationality, user.citizenId]);
+
+  const featureOptions = useMemo(() => {
+    const byCode = new Map(features.map((f) => [f.code, f]));
+    for (const code of user.features) {
+      if (!byCode.has(code)) {
+        byCode.set(code, { code, name: `${code} (đã ngưng)` });
+      }
+    }
+    return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
+  }, [features, user.features]);
+
+  function toggle(code: string) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(code)) n.delete(code);
+      else n.add(code);
+      return n;
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -687,7 +711,8 @@ function EditUserDialog({
             </>
           ) : (
             <>
-              Chỉnh sửa thông tin cá nhân của nhân viên.
+              Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ
+              chỉ xem được dữ liệu.
             </>
           )}
         </p>
@@ -754,6 +779,27 @@ function EditUserDialog({
             </div>
           </div>
 
+          {user.role !== "ADMIN" && (
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+              {featureOptions.map((f) => (
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.code)}
+                    onChange={() => toggle(f.code)}
+                    className="rounded border-zinc-300"
+                  />
+                  <span>{f.name}</span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {f.code}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
         <Button
           className="w-full"
@@ -868,9 +914,11 @@ function EditCredentialsDialog({
 
 function CreateUserDialog({
   departments,
+  features,
   onDone,
 }: {
   departments: Department[];
+  features: FeatureOption[];
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -879,13 +927,22 @@ function CreateUserDialog({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"EMPLOYEE" | "MANAGER">("EMPLOYEE");
   const [departmentId, setDepartmentId] = useState<number | "">("");
-  const [selected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [gender, setGender] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
   const [nationality, setNationality] = useState("");
   const [citizenId, setCitizenId] = useState("");
   const [saving, setSaving] = useState(false);
+
+  function toggle(code: string) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(code)) n.delete(code);
+      else n.add(code);
+      return n;
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -909,6 +966,7 @@ function CreateUserDialog({
       setUsername("");
       setPassword("");
       setDepartmentId("");
+      setSelected(new Set());
       setGender("");
       setDateOfBirth("");
       setAddress("");
@@ -933,6 +991,7 @@ function CreateUserDialog({
           setPassword("");
           setRole("EMPLOYEE");
           setDepartmentId("");
+          setSelected(new Set());
           setGender("");
           setDateOfBirth("");
           setAddress("");
@@ -1070,6 +1129,25 @@ function CreateUserDialog({
             </div>
           </div>
 
+          <div>
+            <Label>Quyền chức năng</Label>
+            <div className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+              {features.map((f) => (
+                <label
+                  key={f.code}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.code)}
+                    onChange={() => toggle(f.code)}
+                    className="rounded border-zinc-300"
+                  />
+                  <span>{f.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <Button
             className="w-full"
             onClick={() => void save()}
