@@ -225,9 +225,21 @@ public class PermissionRequestService {
         if (feats.size() != body.requestedFeatureCodes().size()) {
             throw new BadRequestException("Mã chức năng không hợp lệ hoặc đã ngưng");
         }
-        long n = requestRepository.count() + 1;
+        
+        // Tìm số thứ tự lớn nhất từ mã request hiện có
+        long maxNumber = requestRepository.findAll().stream()
+                .map(PermissionRequest::getCode)
+                .filter(code -> code != null && code.startsWith("REQ-"))
+                .map(code -> code.substring(4)) // Bỏ "REQ-"
+                .filter(numStr -> numStr.matches("\\d+"))
+                .mapToLong(Long::parseLong)
+                .max()
+                .orElse(0L);
+        
+        long nextNumber = maxNumber + 1;
+        
         PermissionRequest r = new PermissionRequest();
-        r.setCode("REQ-" + String.format("%05d", n));
+        r.setCode("REQ-" + String.format("%05d", nextNumber));
         r.setTitle(body.title().trim());
         r.setDescription(body.description());
         r.setStatus(RequestStatus.DRAFT);
