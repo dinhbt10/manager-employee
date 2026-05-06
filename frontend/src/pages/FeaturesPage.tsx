@@ -85,11 +85,6 @@ export function FeaturesPage() {
       <PageHeader
         title="Chức năng (mã)"
         description="Danh mục mã chức năng dùng cho phân quyền và request — chỉ Admin. Mã không đổi sau khi tạo; có thể đổi tên hiển thị và ngưng hoạt động."
-        actions={
-          hasFeature(FeatureCodes.FEATURE_CREATE) ? (
-            <CreateFeatureDialog onDone={load} />
-          ) : null
-        }
       />
       <Card>
         <CardContent className="space-y-0 p-0 pt-6">
@@ -159,9 +154,6 @@ export function FeaturesPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
                         <FeatureDetailDialog feature={f} />
-                        {hasFeature(FeatureCodes.FEATURE_EDIT) && (
-                          <EditFeatureDialog feature={f} onDone={load} />
-                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -720,8 +720,7 @@ function EditUserDialog({
             </>
           ) : (
             <>
-              Chọn nhiều chức năng (multi-select). Nhân viên không có quyền sẽ
-              chỉ xem được dữ liệu.
+              Chỉnh sửa thông tin cá nhân của nhân viên.
             </>
           )}
         </p>
@@ -788,27 +787,6 @@ function EditUserDialog({
             </div>
           </div>
 
-          {user.role !== "ADMIN" && (
-            <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-              {featureOptions.map((f) => (
-                <label
-                  key={f.code}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(f.code)}
-                    onChange={() => toggle(f.code)}
-                    className="rounded border-zinc-300"
-                  />
-                  <span>{f.name}</span>
-                  <span className="font-mono text-xs text-zinc-500">
-                    {f.code}
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
         </div>
         <Button
           className="w-full"
@@ -1138,25 +1116,6 @@ function CreateUserDialog({
             </div>
           </div>
 
-          <div>
-            <Label>Quyền chức năng</Label>
-            <div className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-              {features.map((f) => (
-                <label
-                  key={f.code}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(f.code)}
-                    onChange={() => toggle(f.code)}
-                    className="rounded border-zinc-300"
-                  />
-                  <span>{f.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
           <Button
             className="w-full"
             onClick={() => void save()}

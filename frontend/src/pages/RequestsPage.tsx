@@ -1038,7 +1038,7 @@ function EditRequestDialog({
     });
   }
 
-  const isFormValid = title.trim() && selected.size > 0;
+  const isFormValid = title.trim();
 
   async function saveDraft() {
     if (!isFormValid) return;
@@ -1192,28 +1192,6 @@ function EditRequestDialog({
               ))}
             </select>
           </div>
-          <div>
-            <Label>Chức năng (multi-select)</Label>
-            <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-              {featureOptions.map((f) => (
-                <label
-                  key={f.code}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(f.code)}
-                    onChange={() => toggleFeat(f.code)}
-                    className="rounded border-zinc-300"
-                  />
-                  <span className="text-zinc-800">{f.name}</span>
-                  <span className="font-mono text-xs text-zinc-500">
-                    {f.code}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
           <div className="flex gap-2">
             <Button
               className="flex-1"
@@ -1277,7 +1255,7 @@ function CreateRequestDialog({
     });
   }
 
-  const isFormValid = title.trim() && targetUserId !== "" && selected.size > 0;
+  const isFormValid = title.trim() && targetUserId !== "";
 
   async function createDraft() {
     if (!isFormValid) return;
@@ -1398,28 +1376,6 @@ function CreateRequestDialog({
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <Label>Chức năng (multi-select)</Label>
-            <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-              {features.map((f) => (
-                <label
-                  key={f.code}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(f.code)}
-                    onChange={() => toggleFeat(f.code)}
-                    className="rounded border-zinc-300"
-                  />
-                  <span className="text-zinc-800">{f.name}</span>
-                  <span className="font-mono text-xs text-zinc-500">
-                    {f.code}
-                  </span>
-                </label>
-              ))}
-            </div>
           </div>
           <div className="flex gap-2">
             <Button
